@@ -52,14 +52,14 @@ class OkomeGame {
                 const img = new Image();
                 img.onload = () => {
                     dogType.image = img;
-                    console.log(`Loaded image: okome${dogType.type}.png`);
+                    console.log(`Loaded image: okome${dogType.type}.jpg`);
                     resolve();
                 };
                 img.onerror = () => {
-                    console.error(`Failed to load image: okome${dogType.type}.png`);
+                    console.error(`Failed to load image: okome${dogType.type}.jpg`);
                     resolve();
                 };
-                img.src = `${this.basePath}/image/okome${dogType.type}.png`;
+                img.src = `${this.basePath}/image/okome${dogType.type}.jpg`;
             });
         });
         
@@ -786,7 +786,7 @@ class OkomeGame {
             } else {
                 // 画像がない場合はプレースホルダーを表示
                 img.style.display = 'none';
-                img.src = `${this.basePath}/image/okome${dogType.type}.png`;
+                img.src = `${this.basePath}/image/okome${dogType.type}.jpg`;
                 console.log(`Using placeholder for type ${dogType.type}`);
                 
                 // 画像読み込み成功時の処理
