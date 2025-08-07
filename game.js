@@ -180,12 +180,50 @@ class OkomeGame {
             }
         }, { passive: false });
         
-        this.canvas.addEventListener('click', () => {
+        // クリックイベント（PC用）
+        this.canvas.addEventListener('click', (e) => {
+            if (!this.gameRunning) return;
+            
+            const rect = this.canvas.getBoundingClientRect();
+            const clickX = Math.max(30, Math.min(370, e.clientX - rect.left));
+            
+            // クリック位置に犬を移動してからドロップ
+            if (this.currentDog) {
+                this.mouseX = clickX;
+                Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: this.dropLine });
+                console.log('Click drop at position:', this.mouseX);
+            }
             this.dropDogWithFeedback();
         });
         
-        this.canvas.addEventListener('touchend', (e) => {
+        // タッチイベント（スマホ用）
+        let touchStarted = false;
+        
+        this.canvas.addEventListener('touchstart', (e) => {
+            if (!this.gameRunning) return;
             e.preventDefault();
+            touchStarted = true;
+            
+            const rect = this.canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const touchX = Math.max(30, Math.min(370, touch.clientX - rect.left));
+            
+            console.log('Touch start at:', touchX, 'current mouseX:', this.mouseX);
+            
+            // タッチ位置に犬を移動
+            if (this.currentDog) {
+                this.mouseX = touchX;
+                Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: this.dropLine });
+                console.log('Dog moved to touch position:', this.mouseX);
+            }
+        }, { passive: false });
+        
+        this.canvas.addEventListener('touchend', (e) => {
+            if (!this.gameRunning || !touchStarted) return;
+            e.preventDefault();
+            touchStarted = false;
+            
+            console.log('Touch end - dropping at position:', this.mouseX);
             this.dropDogWithFeedback();
         }, { passive: false });
         
@@ -219,6 +257,7 @@ class OkomeGame {
     
     // フィードバック付きドロップ
     dropDogWithFeedback() {
+        console.log('dropDogWithFeedback called at position:', this.mouseX);
         this.vibrate(50); // 50ms振動
         this.dropDog();
     }
@@ -275,7 +314,8 @@ class OkomeGame {
             currentDog: !!this.currentDog,
             gameRunning: this.gameRunning,
             canDrop: this.canDrop,
-            currentDogStatic: this.currentDog ? this.currentDog.body.isStatic : 'no dog'
+            currentDogStatic: this.currentDog ? this.currentDog.body.isStatic : 'no dog',
+            mouseX: this.mouseX
         });
         
         if (!this.currentDog || !this.gameRunning || !this.canDrop) {
@@ -283,7 +323,13 @@ class OkomeGame {
             return;
         }
         
-        console.log('Dropping dog at position:', this.currentDog.body.position);
+        // ドロップ前に最新の位置に移動してから落とす
+        if (this.currentDog.body.position.x !== this.mouseX) {
+            Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: this.dropLine });
+            console.log('Updated dog position before drop to:', this.mouseX);
+        }
+        
+        console.log('Dropping dog at final position:', this.currentDog.body.position);
         
         // 連打防止
         this.canDrop = false;
@@ -312,8 +358,10 @@ class OkomeGame {
         
         setTimeout(() => {
             if (this.gameRunning) {
-                this.createNextDog(this.mouseX);  // 現在のマウス位置で作成
-                this.canDrop = true;  // 次の犬を作成したらドロップ可能にする
+                // 次の犬はドロップした位置で作成
+                this.createNextDog(this.mouseX);
+                this.canDrop = true;
+                console.log('Next dog created at position:', this.mouseX);
             }
         }, 800);
         
