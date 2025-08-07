@@ -10,6 +10,11 @@ class OkomeGame {
         this.droppedDogs = new Set(); // 落下中の犬を追跡
         this.mouseX = 200; // マウスX座標を保存
         
+        // GitHub Pages対応: ベースパスを設定
+        this.basePath = location.hostname.includes('github.io') && location.pathname.includes('/okome-game/') 
+            ? '/okome-game' : '';
+        console.log('Base path set to:', this.basePath, 'hostname:', location.hostname, 'pathname:', location.pathname);
+        
         this.dogTypes = [
             { type: 1, width: 20, height: 24, image: null, score: 1 },
             { type: 2, width: 26, height: 31, image: null, score: 3 },
@@ -54,7 +59,7 @@ class OkomeGame {
                     console.error(`Failed to load image: okome${dogType.type}.png`);
                     resolve();
                 };
-                img.src = `image/okome${dogType.type}.png`;
+                img.src = `${this.basePath}/image/okome${dogType.type}.png`;
             });
         });
         
@@ -78,7 +83,7 @@ class OkomeGame {
                 console.error(`Failed to load single image: okome${dogType.type}.png`);
                 resolve();
             };
-            img.src = `image/okome${dogType.type}.png`;
+            img.src = `${this.basePath}/image/okome${dogType.type}.png`;
         });
     }
     
@@ -733,7 +738,7 @@ class OkomeGame {
             } else {
                 // 画像がない場合はプレースホルダーを表示
                 img.style.display = 'none';
-                img.src = `image/okome${dogType.type}.png`;
+                img.src = `${this.basePath}/image/okome${dogType.type}.png`;
                 console.log(`Using placeholder for type ${dogType.type}`);
                 
                 // 画像読み込み成功時の処理
