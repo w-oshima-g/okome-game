@@ -1,28 +1,33 @@
-const CACHE_NAME = 'okome-game-v1.0.3';
+const CACHE_NAME = 'okome-game-v1.1.0';
+
+// GitHub Pages向けの設定 - リポジトリ名を含むパス
+const isGitHubPages = location.hostname.includes('github.io');
+const basePath = isGitHubPages ? '/okome-game' : '';
+
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/game.js',
-  '/manifest.json',
-  '/favicon.ico',
-  '/image/okome1.png',
-  '/image/okome2.png',
-  '/image/okome3.png',
-  '/image/okome4.png',
-  '/image/okome5.png',
-  '/image/okome6.png',
-  '/image/okome7.png',
-  '/image/okome8.png',
-  '/image/okome9.png',
-  '/image/okome10.png',
-  '/image/okome11.png',
-  '/icons/icon-57.png',
-  '/icons/icon-72.png',
-  '/icons/icon-114.png',
-  '/icons/icon-144.png',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
+  `${basePath}/`,
+  `${basePath}/index.html`,
+  `${basePath}/style.css`,
+  `${basePath}/game.js`,
+  `${basePath}/manifest.json`,
+  `${basePath}/favicon.ico`,
+  `${basePath}/image/okome1.png`,
+  `${basePath}/image/okome2.png`,
+  `${basePath}/image/okome3.png`,
+  `${basePath}/image/okome4.png`,
+  `${basePath}/image/okome5.png`,
+  `${basePath}/image/okome6.png`,
+  `${basePath}/image/okome7.png`,
+  `${basePath}/image/okome8.png`,
+  `${basePath}/image/okome9.png`,
+  `${basePath}/image/okome10.png`,
+  `${basePath}/image/okome11.png`,
+  `${basePath}/icons/icon-57.png`,
+  `${basePath}/icons/icon-72.png`,
+  `${basePath}/icons/icon-114.png`,
+  `${basePath}/icons/icon-144.png`,
+  `${basePath}/icons/icon-192.png`,
+  `${basePath}/icons/icon-512.png`,
   'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js'
 ];
 
@@ -109,9 +114,9 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch(() => {
-            // オフライン時のフォールバック
+            // オフライン時のフォールバック（GitHub Pages対応）
             if (event.request.destination === 'document') {
-              return caches.match('/index.html');
+              return caches.match(`${basePath}/index.html`) || caches.match(`${basePath}/`);
             }
             // 画像リソースのフォールバック
             if (event.request.destination === 'image') {

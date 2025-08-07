@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>おこめゲーム</title>
+    <script>
+        // GitHub Pages SPA 404対応 - PWAアクセス時の自動リダイレクト
+        const pathSegmentsToKeep = 1;
+        const location = window.location;
+        
+        // GitHub Pagesのリポジトリ名を取得
+        const repo = location.pathname.split('/')[1];
+        
+        // PWAからのアクセスの場合、正しいパスにリダイレクト
+        if (location.pathname !== `/${repo}/`) {
+            location.replace(
+                location.protocol + '//' + location.host + '/' + repo + '/' +
+                (location.hash || '')
+            );
+        } else {
+            // すでに正しいパスの場合は通常のindex.htmlをロード
+            location.replace(location.protocol + '//' + location.host + '/' + repo + '/index.html');
+        }
+    </script>
+</head>
+<body>
+    <p>リダイレクト中...</p>
+</body>
+</html>

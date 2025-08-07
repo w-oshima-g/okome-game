@@ -83,10 +83,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script src="game.js"></script>
     <script>
-        // Service Worker登録
+        // Service Worker登録（GitHub Pages対応）
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
+                const swPath = location.hostname.includes('github.io') ? '/okome-game/sw.js' : '/sw.js';
+                navigator.serviceWorker.register(swPath)
                     .then((registration) => {
                         console.log('ServiceWorker registration successful');
                         
