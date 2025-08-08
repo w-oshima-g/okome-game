@@ -322,21 +322,33 @@ class BGMManager {
         
         if (this.currentAudio) {
             const actualVolume = this.isMuted ? 0 : this.volume;
-            this.currentAudio.volume = actualVolume;
+            
+            // iOS Safari対応: volumeプロパティが効かない場合はmutedプロパティを使用
+            if (this.isMuted) {
+                this.currentAudio.muted = true;
+            } else {
+                this.currentAudio.muted = false;
+                this.currentAudio.volume = actualVolume;
+            }
             
             // 強制的に音量を再設定（ブラウザの制約対応）
             setTimeout(() => {
                 if (this.currentAudio) {
-                    this.currentAudio.volume = actualVolume;
-                    console.log('Volume re-applied:', this.currentAudio.volume);
+                    if (this.isMuted) {
+                        this.currentAudio.muted = true;
+                    } else {
+                        this.currentAudio.muted = false;
+                        this.currentAudio.volume = actualVolume;
+                    }
+                    console.log('Volume re-applied:', this.currentAudio.volume, 'muted:', this.currentAudio.muted);
                     
                     // 音量設定が反映されたかチェック
-                    if (Math.abs(this.currentAudio.volume - actualVolume) > 0.01) {
+                    if (!this.isMuted && Math.abs(this.currentAudio.volume - actualVolume) > 0.01) {
                         console.warn('Volume setting may be restricted by browser/device');
                         console.warn('Expected:', actualVolume, 'Actual:', this.currentAudio.volume);
                         
                         if (window.location.search.includes('debug')) {
-                            alert('⚠️ Volume restriction detected!\nExpected: ' + actualVolume + '\nActual: ' + this.currentAudio.volume);
+                            alert('⚠️ Volume restriction detected!\nExpected: ' + actualVolume + '\nActual: ' + this.currentAudio.volume + '\nTrying muted property instead...');
                         }
                     }
                 }
@@ -360,7 +372,9 @@ class BGMManager {
                       ' (muted: ' + this.isMuted + 
                       ', paused: ' + this.currentAudio.paused +
                       ', readyState: ' + this.currentAudio.readyState + 
-                      ', currentTime: ' + Math.round(this.currentAudio.currentTime) + 's)');
+                      ', currentTime: ' + Math.round(this.currentAudio.currentTime) + 's' +
+                      ', src: ' + this.currentAudio.src.split('/').pop() +
+                      ', muted_prop: ' + this.currentAudio.muted);
             }
         } else {
             console.warn('No currentAudio available for volume change');
@@ -380,23 +394,36 @@ class BGMManager {
         
         if (this.currentAudio) {
             const newVolume = this.isMuted ? 0 : this.volume;
-            this.currentAudio.volume = newVolume;
+            
+            // iOS Safari対応: mutedプロパティを優先使用
+            if (this.isMuted) {
+                this.currentAudio.muted = true;
+            } else {
+                this.currentAudio.muted = false;
+                this.currentAudio.volume = newVolume;
+            }
             
             // 強制的に音量を再設定（ブラウザの制約対応）
             setTimeout(() => {
                 if (this.currentAudio) {
-                    this.currentAudio.volume = newVolume;
-                    console.log('Mute volume re-applied:', this.currentAudio.volume);
+                    if (this.isMuted) {
+                        this.currentAudio.muted = true;
+                    } else {
+                        this.currentAudio.muted = false;
+                        this.currentAudio.volume = newVolume;
+                    }
+                    console.log('Mute volume re-applied:', this.currentAudio.volume, 'muted:', this.currentAudio.muted);
                 }
             }, 100);
             
-            console.log('BGM mute - volume set to:', newVolume, 'audio.volume:', this.currentAudio.volume);
+            console.log('BGM mute - volume set to:', newVolume, 'audio.volume:', this.currentAudio.volume, 'muted:', this.currentAudio.muted);
             
             // デバッグ用alert
             if (window.location.search.includes('debug')) {
                 alert('BGM mute toggled - muted: ' + this.isMuted + 
                       ', volume: ' + newVolume + 
                       ', audio.volume: ' + this.currentAudio.volume +
+                      ', audio.muted: ' + this.currentAudio.muted +
                       ', playing: ' + !this.currentAudio.paused);
             }
         } else {
