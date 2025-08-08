@@ -323,11 +323,44 @@ class BGMManager {
         if (this.currentAudio) {
             const actualVolume = this.isMuted ? 0 : this.volume;
             this.currentAudio.volume = actualVolume;
+            
+            // 強制的に音量を再設定（ブラウザの制約対応）
+            setTimeout(() => {
+                if (this.currentAudio) {
+                    this.currentAudio.volume = actualVolume;
+                    console.log('Volume re-applied:', this.currentAudio.volume);
+                    
+                    // 音量設定が反映されたかチェック
+                    if (Math.abs(this.currentAudio.volume - actualVolume) > 0.01) {
+                        console.warn('Volume setting may be restricted by browser/device');
+                        console.warn('Expected:', actualVolume, 'Actual:', this.currentAudio.volume);
+                        
+                        if (window.location.search.includes('debug')) {
+                            alert('⚠️ Volume restriction detected!\nExpected: ' + actualVolume + '\nActual: ' + this.currentAudio.volume);
+                        }
+                    }
+                }
+            }, 100);
+            
             console.log('BGM volume set to:', actualVolume, 'audio.volume:', this.currentAudio.volume);
+            
+            // 音声ファイルの詳細状態を確認
+            console.log('Audio state:', {
+                paused: this.currentAudio.paused,
+                readyState: this.currentAudio.readyState,
+                networkState: this.currentAudio.networkState,
+                currentTime: this.currentAudio.currentTime,
+                duration: this.currentAudio.duration,
+                volume: this.currentAudio.volume
+            });
             
             // デバッグ用alert
             if (window.location.search.includes('debug')) {
-                alert('BGM volume: ' + volume + '% -> ' + actualVolume + ' (muted: ' + this.isMuted + ')');
+                alert('BGM volume: ' + volume + '% -> ' + actualVolume + 
+                      ' (muted: ' + this.isMuted + 
+                      ', paused: ' + this.currentAudio.paused +
+                      ', readyState: ' + this.currentAudio.readyState + 
+                      ', currentTime: ' + Math.round(this.currentAudio.currentTime) + 's)');
             }
         } else {
             console.warn('No currentAudio available for volume change');
@@ -348,11 +381,23 @@ class BGMManager {
         if (this.currentAudio) {
             const newVolume = this.isMuted ? 0 : this.volume;
             this.currentAudio.volume = newVolume;
+            
+            // 強制的に音量を再設定（ブラウザの制約対応）
+            setTimeout(() => {
+                if (this.currentAudio) {
+                    this.currentAudio.volume = newVolume;
+                    console.log('Mute volume re-applied:', this.currentAudio.volume);
+                }
+            }, 100);
+            
             console.log('BGM mute - volume set to:', newVolume, 'audio.volume:', this.currentAudio.volume);
             
             // デバッグ用alert
             if (window.location.search.includes('debug')) {
-                alert('BGM mute toggled - muted: ' + this.isMuted + ', volume: ' + newVolume);
+                alert('BGM mute toggled - muted: ' + this.isMuted + 
+                      ', volume: ' + newVolume + 
+                      ', audio.volume: ' + this.currentAudio.volume +
+                      ', playing: ' + !this.currentAudio.paused);
             }
         } else {
             console.warn('No currentAudio available for mute toggle');
