@@ -169,16 +169,19 @@ class BGMManager {
     
     enableUserInteraction() {
         // BGM自動再生のためのイベントリスナーを設定
-        // ゲーム領域以外での最初のクリックでBGMを開始
-        const gameCanvas = document.getElementById('gameCanvas');
+        // 特定のUI要素のクリックでのみBGMを開始
+        const targetElements = [
+            'musicIcon', 'playPauseBtn', 'pauseIcon', 'resetIcon', 'helpIcon'
+        ];
         
         const handleFirstInteraction = (event) => {
-            // ゲームキャンバスのクリックは除外
-            if (event.target === gameCanvas) {
-                return;
-            }
+            // 対象となるUI要素かチェック
+            const isTargetElement = targetElements.some(id => {
+                const element = document.getElementById(id);
+                return element && (event.target === element || element.contains(event.target));
+            });
             
-            if (!this.isPlaying && this.currentAudio) {
+            if (isTargetElement && !this.isPlaying && this.currentAudio) {
                 this.play();
                 // リスナーを削除（一度だけ実行）
                 document.removeEventListener('click', handleFirstInteraction);
@@ -296,6 +299,13 @@ class OkomeGame {
         this.engine = Engine.create();
         this.world = this.engine.world;
         
+        // コリジョンカテゴリを定義
+        this.collisionCategories = {
+            WALL: 0x0001,           // 壁
+            DROPPED_DOG: 0x0002,    // ドロップ済みの犬
+            PREVIEW_DOG: 0x0004     // ドロップ前の犬（プレビュー）
+        };
+        
         // 物理エンジンの設定を最適化（落下確実性優先）
         this.engine.world.gravity.y = 1.0; // 重力を強化
         this.engine.constraintIterations = 4; // 制約の反復を増加
@@ -308,17 +318,29 @@ class OkomeGame {
             Bodies.rectangle(200, 610, 400, 20, { 
                 isStatic: true,
                 friction: 0.5,
-                restitution: 0.3
+                restitution: 0.3,
+                collisionFilter: {
+                    category: this.collisionCategories.WALL,
+                    mask: this.collisionCategories.DROPPED_DOG | this.collisionCategories.PREVIEW_DOG
+                }
             }),
             Bodies.rectangle(-10, 300, 20, 600, { 
                 isStatic: true,
                 friction: 0.3,
-                restitution: 0.2
+                restitution: 0.2,
+                collisionFilter: {
+                    category: this.collisionCategories.WALL,
+                    mask: this.collisionCategories.DROPPED_DOG | this.collisionCategories.PREVIEW_DOG
+                }
             }),
             Bodies.rectangle(410, 300, 20, 600, { 
                 isStatic: true,
                 friction: 0.3,
-                restitution: 0.2
+                restitution: 0.2,
+                collisionFilter: {
+                    category: this.collisionCategories.WALL,
+                    mask: this.collisionCategories.DROPPED_DOG | this.collisionCategories.PREVIEW_DOG
+                }
             })
         ];
         
@@ -361,7 +383,8 @@ class OkomeGame {
             this.mouseX = Math.max(30, Math.min(370, e.clientX - rect.left));
             
             if (this.currentDog) {
-                Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: this.dropLine });
+                const safeY = this.calculateSafeDropPosition(this.mouseX, this.currentDog.height);
+                Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: safeY });
             }
         });
         
@@ -375,7 +398,8 @@ class OkomeGame {
             this.mouseX = Math.max(30, Math.min(370, touch.clientX - rect.left));
             
             if (this.currentDog) {
-                Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: this.dropLine });
+                const safeY = this.calculateSafeDropPosition(this.mouseX, this.currentDog.height);
+                Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: safeY });
             }
         }, { passive: false });
         
@@ -389,8 +413,9 @@ class OkomeGame {
             // クリック位置に犬を移動してからドロップ
             if (this.currentDog) {
                 this.mouseX = clickX;
-                Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: this.dropLine });
-                console.log('Click drop at position:', this.mouseX);
+                const safeY = this.calculateSafeDropPosition(this.mouseX, this.currentDog.height);
+                Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: safeY });
+                console.log('Click drop at position:', this.mouseX, 'safeY:', safeY);
             }
             this.dropDogWithFeedback();
         });
@@ -412,8 +437,9 @@ class OkomeGame {
             // タッチ位置に犬を移動
             if (this.currentDog) {
                 this.mouseX = touchX;
-                Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: this.dropLine });
-                console.log('Dog moved to touch position:', this.mouseX);
+                const safeY = this.calculateSafeDropPosition(this.mouseX, this.currentDog.height);
+                Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: safeY });
+                console.log('Dog moved to touch position:', this.mouseX, 'safeY:', safeY);
             }
         }, { passive: false });
         
@@ -513,7 +539,10 @@ class OkomeGame {
         
         // 大きい犬ほど重く、摩擦が大きくなるように調整
         const sizeRatio = dogConfig.width / 20; // 最小サイズ（20px）との比率
-        const body = Matter.Bodies.rectangle(x, this.dropLine, dogConfig.width, dogConfig.height, {
+        // 積まれた犬の最高点を計算して安全な位置を決定
+        const safeDropY = this.calculateSafeDropPosition(x, dogConfig.height);
+        
+        const body = Matter.Bodies.rectangle(x, safeDropY, dogConfig.width, dogConfig.height, {
             isStatic: true, // 初期は静的状態
             restitution: 0.4, // 反発係数を統一
             friction: 0.6,    // 摩擦係数を統一
@@ -522,7 +551,12 @@ class OkomeGame {
             chamfer: { radius: dogConfig.width * 0.25 },
             // 落下を確実にするための追加設定
             sleepThreshold: Infinity, // スリープしない
-            inertia: Infinity // 慣性を防ぐ
+            inertia: Infinity, // 慣性を防ぐ
+            // プレビュー犬は他の犬との衝突判定を無効化
+            collisionFilter: {
+                category: this.collisionCategories.PREVIEW_DOG,
+                mask: this.collisionCategories.WALL // 壁とのみ衝突
+            }
         });
         
         const dog = {
@@ -531,7 +565,8 @@ class OkomeGame {
             width: dogConfig.width,
             height: dogConfig.height,
             image: dogConfig.image,
-            score: dogConfig.score
+            score: dogConfig.score,
+            config: dogConfig
         };
         
         Matter.World.add(this.world, body);
@@ -540,6 +575,39 @@ class OkomeGame {
         
         this.nextDogType = Math.min(5, Math.floor(Math.random() * 5) + 1);
         this.updateNextPreview();
+    }
+    
+    calculateSafeDropPosition(x, dogHeight) {
+        // 指定されたX位置周辺の犬の最高点を計算
+        const searchRadius = 80; // 検索範囲（ピクセル）
+        let highestPoint = this.canvas.height; // キャンバスの底から開始
+        
+        // 積まれた犬たちの中で、X位置周辺にある犬の最高点を探す
+        this.dogs.forEach(dog => {
+            if (!dog.body) return;
+            
+            const dogX = dog.body.position.x;
+            const dogY = dog.body.position.y;
+            const currentDogHeight = dog.height || 50;
+            
+            // X位置が検索範囲内にある犬を対象とする
+            if (Math.abs(dogX - x) <= searchRadius) {
+                const dogTop = dogY - currentDogHeight / 2;
+                if (dogTop < highestPoint) {
+                    highestPoint = dogTop;
+                }
+            }
+        });
+        
+        // 安全マージンを設けてcurrentDogの位置を決定
+        const safetyMargin = dogHeight + 40; // 犬の高さ + 40px の余裕
+        const safeY = Math.min(this.dropLine, highestPoint - safetyMargin);
+        
+        // 最低でも画面上端から10px、最高でもdropLineの位置
+        const finalY = Math.max(10, Math.min(this.dropLine, safeY));
+        
+        console.log(`Safe drop position: x=${x}, finalY=${finalY}, highestPoint=${highestPoint}, margin=${safetyMargin}`);
+        return finalY;
     }
     
     dropDog() {
@@ -558,8 +626,9 @@ class OkomeGame {
         
         // ドロップ前に最新の位置に移動してから落とす
         if (this.currentDog.body.position.x !== this.mouseX) {
-            Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: this.dropLine });
-            console.log('Updated dog position before drop to:', this.mouseX);
+            const safeY = this.calculateSafeDropPosition(this.mouseX, this.currentDog.height);
+            Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: safeY });
+            console.log('Updated dog position before drop to:', this.mouseX, 'safeY:', safeY);
         }
         
         console.log('Dropping dog at final position:', this.currentDog.body.position);
@@ -569,6 +638,10 @@ class OkomeGame {
         
         // 物理ボディを動的に変更（落下させる）
         Matter.Body.setStatic(this.currentDog.body, false);
+        
+        // ドロップ時にコリジョンカテゴリを変更（他の犬と衝突可能に）
+        this.currentDog.body.collisionFilter.category = this.collisionCategories.DROPPED_DOG;
+        this.currentDog.body.collisionFilter.mask = this.collisionCategories.WALL | this.collisionCategories.DROPPED_DOG;
         
         // 落下を確実にするための追加処理
         Matter.Body.setVelocity(this.currentDog.body, { x: 0, y: 0.1 }); // 小さな初速度を与えて落下を開始
@@ -649,7 +722,12 @@ class OkomeGame {
             friction: Math.min(0.8, 0.4 + newSizeRatio * 0.03),
             frictionAir: 0.005 + newSizeRatio * 0.002,
             density: 0.0008 + newSizeRatio * 0.0002,
-            chamfer: { radius: newConfig.width * 0.25 }
+            chamfer: { radius: newConfig.width * 0.25 },
+            // マージで作成された犬も他の犬と衝突可能
+            collisionFilter: {
+                category: this.collisionCategories.DROPPED_DOG,
+                mask: this.collisionCategories.WALL | this.collisionCategories.DROPPED_DOG
+            }
         });
         
         const newDog = {
