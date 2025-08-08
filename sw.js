@@ -1,4 +1,4 @@
-const CACHE_NAME = 'okome-game-v1.4.0';
+const CACHE_NAME = 'okome-game-v2.0.0';
 
 // GitHub Pages向けの設定 - リポジトリ名を含むパス
 const isGitHubPages = location.hostname.includes('github.io');

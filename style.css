@@ -6,7 +6,7 @@
 
 body {
     font-family: 'Arial', sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #f4d03f 0%, #f39c12 100%);
     min-height: 100vh;
     display: flex;
     justify-content: center;
@@ -26,192 +26,100 @@ body {
 }
 
 .game-container {
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
     border-radius: 20px;
     padding: 20px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    max-width: 500px;
+    max-width: 450px;
     width: 100%;
+    min-height: 80vh;
+    display: flex;
+    flex-direction: column;
 }
 
+/* スイカゲーム風ヘッダー */
 .header {
-    text-align: center;
     margin-bottom: 20px;
 }
 
-.header h1 {
-    color: #333;
-    font-size: 2.5em;
-    margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.score {
-    font-size: 1.5em;
-    color: #667eea;
-    font-weight: bold;
-}
-
-.game-area {
+.top-bar {
     display: flex;
-    gap: 20px;
-    justify-content: center;
-    align-items: flex-start;
-    margin-bottom: 20px;
-}
-
-.sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    min-width: 380px;
-}
-
-#gameCanvas {
-    border: 3px solid #333;
-    border-radius: 10px;
-    background: #f8f9ff;
-    cursor: crosshair;
-}
-
-.next-preview {
-    display: flex;
-    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
-    background: #f0f0f0;
-    padding: 15px;
-    border-radius: 10px;
-    min-width: 80px;
+    gap: 8px;
 }
 
-.next-preview p {
+.circle-icon {
+    width: 70px;
+    height: 70px;
+    background: rgba(255, 215, 120, 0.8);
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.circle-icon:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.icon-label {
+    font-size: 9px;
     font-weight: bold;
-    margin-bottom: 10px;
-    color: #333;
+    color: #8b4513;
+    text-align: center;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.icon-value {
+    font-size: 16px;
+    font-weight: bold;
+    color: #5d4037;
+    text-align: center;
+    line-height: 1;
+}
+
+.icon-symbol {
+    font-size: 24px;
+    color: #5d4037;
 }
 
 #nextImage {
-    width: 50px;
-    height: 50px;
+    width: 35px;
+    height: 35px;
     object-fit: contain;
-    border-radius: 5px;
-}
-
-.growth-guide {
-    background: #f0f0f0;
-    padding: 15px;
-    border-radius: 10px;
-}
-
-.growth-guide h3 {
-    margin: 0 0 15px 0;
-    text-align: center;
-    color: #333;
-    font-size: 1.2em;
-}
-
-.growth-circle {
-    position: relative;
-    width: 360px;
-    height: 360px;
-    margin: 0 auto;
-    background: radial-gradient(circle, rgba(255, 248, 220, 0.9) 30%, rgba(255, 235, 185, 0.8) 70%);
     border-radius: 50%;
-    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.growth-item {
-    position: absolute;
-    border-radius: 50%;
+/* ゲームエリア */
+.game-area {
+    flex: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    margin-bottom: 20px;
 }
 
-.growth-item:hover {
-    transform: scale(1.2);
-    z-index: 10;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+#gameCanvas {
+    border: 4px solid #d4af37;
+    border-radius: 15px;
+    background: linear-gradient(180deg, #fff8e1 0%, #f3e5ab 100%);
+    cursor: crosshair;
+    box-shadow: 
+        inset 0 0 20px rgba(255, 255, 255, 0.3),
+        0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
-.growth-item img {
-    object-fit: contain;
-    border-radius: 8px;
-}
-
-.growth-placeholder {
-    border-radius: 8px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-weight: bold;
-    color: #333;
-}
-
-.growth-tooltip {
-    position: absolute;
-    bottom: -25px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-    z-index: 20;
-}
-
-.growth-item:hover .growth-tooltip {
-    opacity: 1;
-}
-
-.controls {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-}
-
-.controls button {
-    padding: 12px 24px;
-    font-size: 1.1em;
-    font-weight: bold;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-#dropButton {
-    background: #4CAF50;
-    color: white;
-}
-
-#dropButton:hover {
-    background: #45a049;
-    transform: translateY(-2px);
-}
-
-#restartButton {
-    background: #f44336;
-    color: white;
-}
-
-#restartButton:hover {
-    background: #da190b;
-    transform: translateY(-2px);
-}
-
-.controls button:active {
-    transform: translateY(0);
-}
-
+/* ゲームオーバー画面 */
 .game-over {
     position: fixed;
     top: 0;
@@ -262,6 +170,7 @@ body {
     transform: translateY(-2px);
 }
 
+/* PWAインストールバナー */
 .install-banner {
     position: fixed;
     bottom: 20px;
@@ -353,48 +262,74 @@ body {
     transform: translateY(-1px);
 }
 
-@media (max-width: 800px) {
+/* レスポンシブ対応 */
+@media (max-width: 480px) {
     .game-container {
         padding: 15px;
         margin: 10px;
+        max-width: 100vw;
+        min-height: 100vh;
     }
     
-    .header h1 {
-        font-size: 2em;
+    .top-bar {
+        gap: 4px;
+    }
+    
+    .circle-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .icon-label {
+        font-size: 8px;
+    }
+    
+    .icon-value {
+        font-size: 14px;
+    }
+    
+    .icon-symbol {
+        font-size: 20px;
+    }
+    
+    #nextImage {
+        width: 30px;
+        height: 30px;
     }
     
     #gameCanvas {
-        width: 350px;
-        height: 500px;
+        width: calc(100vw - 50px);
+        height: calc(100vh - 200px);
+        max-width: 380px;
+        max-height: 600px;
+    }
+}
+
+@media (max-width: 400px) {
+    .circle-icon {
+        width: 55px;
+        height: 55px;
     }
     
-    .game-area {
-        flex-direction: column;
-        align-items: center;
+    .icon-label {
+        font-size: 7px;
     }
     
-    .sidebar {
-        order: -1;
-        flex-direction: row;
-        gap: 20px;
-        min-width: auto;
-        width: 100%;
-        justify-content: center;
-        margin-bottom: 15px;
+    .icon-value {
+        font-size: 12px;
     }
     
-    .next-preview {
-        flex-direction: row;
-        gap: 10px;
-        min-width: auto;
+    .icon-symbol {
+        font-size: 18px;
     }
     
-    .growth-guide {
-        min-width: auto;
+    #nextImage {
+        width: 25px;
+        height: 25px;
     }
-    
-    .growth-circle {
-        width: 200px;
-        height: 200px;
-    }
+}
+
+/* 隠しボタン（互換性のため） */
+#dropButton, #restartButton {
+    display: none !important;
 }

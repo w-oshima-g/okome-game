@@ -3,30 +3,33 @@ class OkomeGame {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.score = 0;
+        this.bestScore = localStorage.getItem('okome-best-score') || 0;
         this.gameRunning = true;
         this.nextDogType = 1;
         this.canDrop = true;
         this.gameLoopRunning = false;
         this.droppedDogs = new Set(); // 落下中の犬を追跡
         this.mouseX = 200; // マウスX座標を保存
+        this.isPaused = false;
         
         // GitHub Pages対応: ベースパスを設定
         this.basePath = location.hostname.includes('github.io') && location.pathname.includes('/okome-game/') 
             ? '/okome-game' : '';
         console.log('Base path set to:', this.basePath, 'hostname:', location.hostname, 'pathname:', location.pathname);
         
+        // スイカゲームと同じスコア体系
         this.dogTypes = [
-            { type: 1, width: 20, height: 24, image: null, score: 1 },
-            { type: 2, width: 26, height: 31, image: null, score: 3 },
-            { type: 3, width: 34, height: 41, image: null, score: 6 },
-            { type: 4, width: 44, height: 53, image: null, score: 10 },
-            { type: 5, width: 57, height: 68, image: null, score: 15 },
-            { type: 6, width: 74, height: 89, image: null, score: 21 },
-            { type: 7, width: 96, height: 115, image: null, score: 28 },
-            { type: 8, width: 125, height: 150, image: null, score: 36 },
-            { type: 9, width: 162, height: 194, image: null, score: 45 },
-            { type: 10, width: 211, height: 253, image: null, score: 55 },
-            { type: 11, width: 274, height: 329, image: null, score: 66 }
+            { type: 1, width: 20, height: 24, image: null, score: 1 },     // チェリー相当
+            { type: 2, width: 26, height: 31, image: null, score: 3 },     // いちご相当
+            { type: 3, width: 34, height: 41, image: null, score: 6 },     // みかん相当
+            { type: 4, width: 44, height: 53, image: null, score: 10 },    // レモン相当
+            { type: 5, width: 57, height: 68, image: null, score: 15 },    // キウイ相当
+            { type: 6, width: 74, height: 89, image: null, score: 21 },    // トマト相当
+            { type: 7, width: 96, height: 115, image: null, score: 28 },   // 桃相当
+            { type: 8, width: 125, height: 150, image: null, score: 36 },  // パイン相当
+            { type: 9, width: 162, height: 194, image: null, score: 45 },  // メロン相当
+            { type: 10, width: 211, height: 253, image: null, score: 55 }, // スイカ相当
+            { type: 11, width: 274, height: 329, image: null, score: 66 }  // 特大スイカ
         ];
         
         this.previewImage = new Image();
@@ -68,7 +71,7 @@ class OkomeGame {
         
         // 読み込み完了後にUIを更新
         this.updateNextPreview();
-        this.createGrowthCircle();
+        this.updateScore(); // ベストスコアを初期表示
     }
     
     loadSingleImage(dogType) {
@@ -227,16 +230,26 @@ class OkomeGame {
             this.dropDogWithFeedback();
         }, { passive: false });
         
-        document.getElementById('dropButton').addEventListener('click', () => {
-            this.dropDogWithFeedback();
-        });
-        
-        document.getElementById('restartButton').addEventListener('click', (e) => {
+        // 新しい円形アイコンのイベントリスナー
+        document.getElementById('resetIcon').addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Restart button clicked');
+            console.log('Reset icon clicked');
             this.restart();
         });
+        
+        document.getElementById('pauseIcon').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Pause icon clicked');
+            this.togglePause();
+        });
+        
+        // 旧ボタンとの互換性
+        const dropBtn = document.getElementById('dropButton');
+        const restartBtn = document.getElementById('restartButton');
+        if (dropBtn) dropBtn.addEventListener('click', () => this.dropDogWithFeedback());
+        if (restartBtn) restartBtn.addEventListener('click', () => this.restart());
         
         document.getElementById('playAgainButton').addEventListener('click', (e) => {
             e.preventDefault();
@@ -305,7 +318,7 @@ class OkomeGame {
         this.currentDog = dog;
         console.log('Created new dog:', dog.type, 'at position:', body.position, 'isStatic:', body.isStatic);
         
-        this.nextDogType = Math.min(5, Math.floor(Math.random() * 3) + 1);
+        this.nextDogType = Math.min(5, Math.floor(Math.random() * 5) + 1);
         this.updateNextPreview();
     }
     
@@ -437,18 +450,45 @@ class OkomeGame {
         Matter.World.add(this.world, newBody);
         this.dogs.push(newDog);
         
-        this.score += newConfig.score * 10;
+        // スイカゲームと同じスコア計算：合体した犬のレベルに応じた固定スコア
+        const mergeScore = this.calculateMergeScore(newType);
+        this.score += mergeScore;
         this.updateScore();
+        
+        console.log(`Merged to level ${newType}, score added: ${mergeScore}`);
         
         // 合体の触覚フィードバック
         this.vibrate([100, 50, 100]);
         
+        // 最高レベル達成時の特別処理
         if (newType === 11) {
-            this.score += 1000;
+            // 特大スイカ達成ボーナス
+            this.score += 5000;
             this.updateScore();
+            console.log('Maximum level achieved! Bonus: 5000 points');
             // 最終合体の特別な触覚フィードバック
             this.vibrate([200, 100, 200, 100, 200]);
         }
+    }
+    
+    // スイカゲームと同じスコア計算ロジック
+    calculateMergeScore(level) {
+        // スイカゲームの標準的なスコアテーブル
+        const scoreTable = {
+            1: 1,      // チェリー相当 -> いちご
+            2: 3,      // いちご相当 -> みかん
+            3: 6,      // みかん相当 -> レモン
+            4: 10,     // レモン相当 -> キウイ
+            5: 15,     // キウイ相当 -> トマト
+            6: 21,     // トマト相当 -> 桃
+            7: 28,     // 桃相当 -> パイン
+            8: 36,     // パイン相当 -> メロン
+            9: 45,     // メロン相当 -> スイカ
+            10: 55,    // スイカ相当 -> 特大スイカ
+            11: 66     // 特大スイカ（最高レベル）
+        };
+        
+        return scoreTable[level] || 0;
     }
     
     checkGameOver() {
@@ -492,11 +532,33 @@ class OkomeGame {
         document.getElementById('gameOver').style.display = 'flex';
     }
     
+    togglePause() {
+        this.isPaused = !this.isPaused;
+        console.log('Game paused:', this.isPaused);
+        
+        const pauseIcon = document.getElementById('pauseIcon').querySelector('.icon-symbol');
+        pauseIcon.textContent = this.isPaused ? '▶' : '⏸';
+        
+        if (this.isPaused) {
+            if (this.runner) {
+                Matter.Runner.stop(this.runner);
+            }
+        } else {
+            if (this.runner) {
+                Matter.Runner.run(this.runner, this.engine);
+            }
+        }
+    }
+    
     restart() {
         console.log('Restarting game...');
         
         // ゲーム状態をリセット
         this.gameRunning = false;
+        this.isPaused = false;
+        const pauseIcon = document.getElementById('pauseIcon').querySelector('.icon-symbol');
+        pauseIcon.textContent = '⏸';
+        
         this.score = 0;
         this.updateScore();
         document.getElementById('gameOver').style.display = 'none';
@@ -560,6 +622,13 @@ class OkomeGame {
     
     updateScore() {
         document.getElementById('score').textContent = this.score;
+        
+        // ベストスコア更新チェック
+        if (this.score > this.bestScore) {
+            this.bestScore = this.score;
+            localStorage.setItem('okome-best-score', this.bestScore);
+        }
+        document.getElementById('bestScoreValue').textContent = this.bestScore;
     }
     
     updateNextPreview() {
@@ -714,103 +783,10 @@ class OkomeGame {
         this.ctx.restore();
     }
     
+    // 成長の輪は削除され、新しいUIでは使用されない
     createGrowthCircle() {
-        const container = document.getElementById('growthCircle');
-        container.innerHTML = ''; // 強制クリアして再生成
-        
-        console.log('Creating growth circle...');
-        
-        // キャッシュされた色配列を作成して再利用
-        if (!this.cachedColors) {
-            this.cachedColors = [
-                '#ffb3ba', '#ffdfba', '#ffffba', '#baffc9',
-                '#bae1ff', '#c9baff', '#ffbac9', '#ffd4ba',
-                '#d4ffba', '#baffdf', '#bac9ff'
-            ];
-        }
-        
-        // レスポンシブ計算をキャッシュ
-        if (!this.responsiveCache) {
-            const isMobile = window.innerWidth <= 800;
-            this.responsiveCache = {
-                baseRadius: isMobile ? 80 : 150,
-                centerX: isMobile ? 100 : 180,
-                centerY: isMobile ? 100 : 180,
-                scale: isMobile ? 0.25 : 0.3
-            };
-        }
-        
-        const { baseRadius, centerX, centerY, scale } = this.responsiveCache;
-        
-        // DocumentFragmentでDOM操作を最適化
-        const fragment = document.createDocumentFragment();
-        
-        this.dogTypes.forEach((dogType, index) => {
-            console.log(`Creating growth item for type: ${dogType.type}, image exists: ${dogType.image ? 'yes' : 'no'}`);
-            
-            const angle = (index / this.dogTypes.length) * 2 * Math.PI - Math.PI / 2;
-            
-            const itemWidth = dogType.width * scale;
-            const itemHeight = dogType.height * scale;
-            const maxSize = Math.max(itemWidth, itemHeight);
-            
-            const radiusOffset = Math.max(0, (maxSize - 20) * 0.3);
-            const currentRadius = baseRadius + radiusOffset;
-            
-            const x = centerX + currentRadius * Math.cos(angle) - itemWidth / 2;
-            const y = centerY + currentRadius * Math.sin(angle) - itemHeight / 2;
-            
-            const item = document.createElement('div');
-            item.className = 'growth-item';
-            item.style.cssText = `left: ${x}px; top: ${y}px; width: ${itemWidth}px; height: ${itemHeight}px;`;
-            
-            const img = document.createElement('img');
-            img.alt = `okome${dogType.type}`;
-            img.style.cssText = `width: ${itemWidth}px; height: ${itemHeight}px;`;
-            
-            const placeholder = document.createElement('div');
-            placeholder.className = 'growth-placeholder';
-            placeholder.style.cssText = `background: ${this.cachedColors[index]}; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #333; font-weight: bold; width: ${itemWidth}px; height: ${itemHeight}px; font-size: ${Math.max(8, itemWidth / 4)}px;`;
-            placeholder.textContent = dogType.type;
-            
-            const tooltip = document.createElement('div');
-            tooltip.className = 'growth-tooltip';
-            tooltip.textContent = `Lv.${dogType.type} (${dogType.width}×${dogType.height})`;
-            
-            // 画像が既に読み込み済みの場合
-            if (dogType.image) {
-                img.src = dogType.image.src;
-                img.style.display = 'block';
-                placeholder.style.display = 'none';
-                console.log(`Using loaded image for type ${dogType.type}`);
-            } else {
-                // 画像がない場合はプレースホルダーを表示
-                img.style.display = 'none';
-                img.src = `${this.basePath}/image/okome${dogType.type}.png`;
-                console.log(`Using placeholder for type ${dogType.type}`);
-                
-                // 画像読み込み成功時の処理
-                img.onload = () => {
-                    console.log(`Growth circle image loaded for type ${dogType.type}`);
-                    img.style.display = 'block';
-                    placeholder.style.display = 'none';
-                };
-                
-                img.onerror = () => {
-                    console.error(`Growth circle image failed to load for type ${dogType.type}`);
-                    img.style.display = 'none';
-                    placeholder.style.display = 'flex';
-                };
-            }
-            
-            item.appendChild(img);
-            item.appendChild(placeholder);
-            item.appendChild(tooltip);
-            fragment.appendChild(item);
-        });
-        
-        container.appendChild(fragment);
-        console.log('Growth circle created');
+        // スイカゲーム風UIでは成長の輪は表示しない
+        console.log('Growth circle not used in new UI');
     }
 }
 

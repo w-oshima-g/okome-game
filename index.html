@@ -36,26 +36,33 @@
 </head>
 <body>
     <div class="game-container">
+        <!-- スイカゲーム風ヘッダー -->
         <div class="header">
-            <h1>おこめゲーム</h1>
-            <div class="score">Score: <span id="score">0</span></div>
-        </div>
-        <div class="game-area">
-            <canvas id="gameCanvas" width="400" height="600"></canvas>
-            <div class="sidebar">
-                <div class="next-preview">
-                    <p>Next:</p>
+            <div class="top-bar">
+                <div class="circle-icon" id="bestScore">
+                    <div class="icon-label">ベストスコア</div>
+                    <div class="icon-value" id="bestScoreValue">0</div>
+                </div>
+                <div class="circle-icon" id="currentScore">
+                    <div class="icon-label">スコア</div>
+                    <div class="icon-value" id="score">0</div>
+                </div>
+                <div class="circle-icon" id="nextIcon">
+                    <div class="icon-label">ネクスト</div>
                     <img id="nextImage" src="./image/okome1.png" alt="Next">
                 </div>
-                <div class="growth-guide">
-                    <h3>成長の輪</h3>
-                    <div class="growth-circle" id="growthCircle"></div>
+                <div class="circle-icon" id="pauseIcon">
+                    <div class="icon-symbol">⏸</div>
+                </div>
+                <div class="circle-icon" id="resetIcon">
+                    <div class="icon-symbol">↻</div>
                 </div>
             </div>
         </div>
-        <div class="controls">
-            <button id="dropButton">DROP</button>
-            <button id="restartButton">RESTART</button>
+        
+        <!-- メインゲームエリア -->
+        <div class="game-area">
+            <canvas id="gameCanvas" width="400" height="600"></canvas>
         </div>
         
         <!-- PWA インストール促進バナー -->
@@ -72,6 +79,7 @@
                 </div>
             </div>
         </div>
+        <!-- ゲームオーバー画面 -->
         <div class="game-over" id="gameOver">
             <div>
                 <h2>Game Over!</h2>
@@ -79,6 +87,10 @@
                 <button id="playAgainButton">Play Again</button>
             </div>
         </div>
+        
+        <!-- 隠しボタン（互換性のため） -->
+        <button id="dropButton" style="display: none;">DROP</button>
+        <button id="restartButton" style="display: none;">RESTART</button>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <script src="game.js"></script>
