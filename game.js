@@ -148,6 +148,7 @@ class SoundEffectManager {
     
     setVolume(volume) {
         this.volume = Math.max(0, Math.min(1, volume));
+        console.log('SE setVolume called:', volume, 'normalized:', this.volume, 'enabled:', this.soundEnabled);
         
         // 音声ファイルの音量も更新
         Object.values(this.soundFiles).forEach(audio => {
@@ -185,11 +186,18 @@ class SoundEffectManager {
     // ユーザーインタラクション後にAudioContextを開始
     enableAfterUserGesture() {
         if (this.audioContext && this.audioContext.state === 'suspended') {
-            document.addEventListener('click', () => {
+            const resumeContext = () => {
                 this.audioContext.resume().then(() => {
-                    console.log('AudioContext resumed');
+                    console.log('Sound Effects AudioContext resumed');
+                }).catch(error => {
+                    console.warn('Failed to resume AudioContext:', error);
                 });
-            }, { once: true });
+            };
+            
+            // スマホ対応: 複数のイベントタイプに対応
+            document.addEventListener('click', resumeContext, { once: true });
+            document.addEventListener('touchstart', resumeContext, { once: true, passive: true });
+            document.addEventListener('touchend', resumeContext, { once: true, passive: true });
         }
     }
 }
@@ -270,8 +278,11 @@ class BGMManager {
     
     setVolume(volume) {
         this.volume = volume / 100;
-        if (this.currentAudio && !this.isMuted) {
-            this.currentAudio.volume = this.volume;
+        console.log('BGM setVolume called:', volume, 'normalized:', this.volume, 'muted:', this.isMuted);
+        if (this.currentAudio) {
+            const actualVolume = this.isMuted ? 0 : this.volume;
+            this.currentAudio.volume = actualVolume;
+            console.log('BGM volume set to:', actualVolume);
         }
         this.saveSettings();
     }
@@ -387,6 +398,12 @@ class BGMManager {
         if (volumeSlider) {
             volumeSlider.addEventListener('input', (e) => {
                 const volume = parseInt(e.target.value);
+                
+                // スマホでAudioContextを再開
+                if (this.currentAudio && this.currentAudio.readyState > 0) {
+                    this.currentAudio.load(); // 音声ファイルを再読み込み
+                }
+                
                 this.setVolume(volume); // setVolumeメソッド内で100で割る処理をする
                 
                 const percent = volume / 100;
@@ -412,6 +429,14 @@ class BGMManager {
         if (sfxVolumeSlider && this.soundManager) {
             sfxVolumeSlider.addEventListener('input', (e) => {
                 const volume = parseInt(e.target.value);
+                
+                // スマホでAudioContextを再開
+                if (this.soundManager.audioContext && this.soundManager.audioContext.state === 'suspended') {
+                    this.soundManager.audioContext.resume().then(() => {
+                        console.log('SE AudioContext resumed by slider');
+                    });
+                }
+                
                 this.soundManager.setVolume(volume / 100);
                 
                 // スライダーの視覚的更新
@@ -544,9 +569,10 @@ class BGMManager {
     
     enableUserInteraction() {
         // BGM自動再生のためのイベントリスナーを設定
-        // 特定のUI要素のクリックでのみBGMを開始
+        // 音量調整要素も含める
         const targetElements = [
-            'musicIcon', 'playPauseBtn', 'pauseIcon', 'resetIcon', 'helpIcon'
+            'musicIcon', 'playPauseBtn', 'pauseIcon', 'resetIcon', 'helpIcon',
+            'volumeSlider', 'bgmMuteBtn', 'sfxVolumeSlider', 'seMuteBtn'
         ];
         
         const handleFirstInteraction = (event) => {
@@ -554,16 +580,34 @@ class BGMManager {
             const isTargetElement = targetElements.some(id => {
                 const element = document.getElementById(id);
                 return element && (event.target === element || element.contains(event.target));
-            });
+            }) || event.target.classList.contains('volume-slider') || event.target.classList.contains('volume-mute-btn');
             
-            if (isTargetElement && !this.isPlaying && this.currentAudio) {
-                this.play();
+            if (isTargetElement) {
+                console.log('User interaction detected for audio context');
+                
+                // BGMオーディオコンテキストを開始
+                if (this.currentAudio) {
+                    this.currentAudio.load();
+                }
+                
+                // Sound Effects AudioContext を初期化
+                if (this.soundManager && this.soundManager.audioContext && this.soundManager.audioContext.state === 'suspended') {
+                    this.soundManager.audioContext.resume().then(() => {
+                        console.log('AudioContext resumed for sound effects');
+                    });
+                }
+                
                 // リスナーを削除（一度だけ実行）
                 document.removeEventListener('click', handleFirstInteraction);
+                document.removeEventListener('touchstart', handleFirstInteraction);
+                document.removeEventListener('input', handleFirstInteraction);
             }
         };
         
+        // モバイル対応のイベントリスナー
         document.addEventListener('click', handleFirstInteraction);
+        document.addEventListener('touchstart', handleFirstInteraction, { passive: true });
+        document.addEventListener('input', handleFirstInteraction, { passive: true });
     }
 }
 
