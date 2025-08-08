@@ -117,31 +117,49 @@
             </div>
         </div>
         
-        <!-- 音楽コントロールポップアップ -->
-        <div class="music-popup" id="musicPopup" style="display: none;">
-            <div class="music-content">
-                <div class="music-header">
-                    <h2>BGM設定</h2>
-                    <button class="music-close" id="musicClose">×</button>
+        <!-- 設定ポップアップ -->
+        <div class="settings-popup" id="musicPopup" style="display: none;">
+            <div class="settings-overlay"></div>
+            <div class="settings-content">
+                <button class="settings-close" id="musicClose">×</button>
+                <h2>音量調整</h2>
+                
+                <!-- BGM選択セクション -->
+                <div class="bgm-selection">
+                    <h3>BGM選択</h3>
+                    <div class="bgm-options">
+                        <div class="bgm-option" data-bgm="1">
+                            <div class="bgm-option-icon">🎵</div>
+                            <div class="bgm-option-label">BGM 1</div>
+                        </div>
+                        <div class="bgm-option" data-bgm="2">
+                            <div class="bgm-option-icon">🎶</div>
+                            <div class="bgm-option-label">BGM 2</div>
+                        </div>
+                        <div class="bgm-option" data-bgm="3">
+                            <div class="bgm-option-icon">🎼</div>
+                            <div class="bgm-option-label">BGM 3</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="music-body">
-                    <div class="music-controls">
-                        <div class="music-control-group">
-                            <label>BGM選択</label>
-                            <select id="bgmSelect">
-                                <option value="0">BGM 1 (基本)</option>
-                                <option value="1">BGM 2 (軽快)</option>
-                                <option value="2">BGM 3 (落ち着き)</option>
-                            </select>
+                
+                <div class="volume-control">
+                    <div class="volume-row">
+                        <div class="volume-icon">♪</div>
+                        <div class="volume-label">BGM</div>
+                        <div class="volume-slider-container">
+                            <input type="range" id="volumeSlider" min="0" max="100" value="25" class="volume-slider bgm-slider">
                         </div>
-                        <div class="music-control-group">
-                            <label>音量: <span id="volumeValue">25</span>%</label>
-                            <input type="range" id="volumeSlider" min="0" max="100" value="25">
+                        <button class="volume-mute-btn" id="bgmMuteBtn">🔊</button>
+                    </div>
+                    
+                    <div class="volume-row">
+                        <div class="volume-icon">🔊</div>
+                        <div class="volume-label">SE</div>
+                        <div class="volume-slider-container">
+                            <input type="range" id="sfxVolumeSlider" min="0" max="100" value="30" class="volume-slider se-slider">
                         </div>
-                        <div class="music-control-group">
-                            <button id="playPauseBtn" class="music-btn">▶ 再生</button>
-                            <button id="muteBtn" class="music-btn">🔊 ミュート切替</button>
-                        </div>
+                        <button class="volume-mute-btn" id="seMuteBtn">🔊</button>
                     </div>
                 </div>
             </div>

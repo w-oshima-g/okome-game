@@ -1,3 +1,199 @@
+class SoundEffectManager {
+    constructor() {
+        this.audioContext = null;
+        this.soundEnabled = true;
+        this.volume = 0.3; // デフォルト音量（30%）
+        this.soundFiles = {
+            drop: null,    // ドロップ音ファイル（後で設定可能）
+            merge: null    // 合体音ファイル（後で設定可能）
+        };
+        
+        // 保存された設定を読み込み
+        this.loadSettings();
+        
+        this.initAudioContext();
+    }
+    
+    initAudioContext() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (error) {
+            console.warn('Web Audio API not supported:', error);
+            this.soundEnabled = false;
+        }
+    }
+    
+    // 音声ファイルを設定（後で音声ファイルに切り替える時用）
+    setSoundFile(soundType, audioFilePath) {
+        if (soundType in this.soundFiles) {
+            const audio = new Audio(audioFilePath);
+            audio.volume = this.volume;
+            this.soundFiles[soundType] = audio;
+            console.log(`Sound file set for ${soundType}:`, audioFilePath);
+        }
+    }
+    
+    // Web Audio APIで生成する効果音
+    playDropSound() {
+        if (!this.soundEnabled) return;
+        
+        // 音声ファイルが設定されている場合はそちらを再生
+        if (this.soundFiles.drop) {
+            this.playAudioFile('drop');
+            return;
+        }
+        
+        // Web Audio APIで生成するドロップ音（ポップな音）
+        this.playGeneratedSound({
+            type: 'drop',
+            frequency: 400,      // 基本周波数
+            frequency2: 600,     // 二番目の周波数
+            duration: 0.15,      // 音の長さ
+            attack: 0.01,        // アタック時間
+            decay: 0.05,         // ディケイ時間
+            sustain: 0.3,        // サスティンレベル
+            release: 0.1         // リリース時間
+        });
+    }
+    
+    playMergeSound() {
+        if (!this.soundEnabled) return;
+        
+        // 音声ファイルが設定されている場合はそちらを再生
+        if (this.soundFiles.merge) {
+            this.playAudioFile('merge');
+            return;
+        }
+        
+        // Web Audio APIで生成する合体音（上昇する音）
+        this.playGeneratedSound({
+            type: 'merge',
+            frequency: 300,      // 開始周波数
+            frequency2: 800,     // 終了周波数
+            duration: 0.3,       // 音の長さ
+            attack: 0.02,        // アタック時間
+            decay: 0.1,          // ディケイ時間
+            sustain: 0.5,        // サスティンレベル
+            release: 0.15        // リリース時間
+        });
+    }
+    
+    playAudioFile(soundType) {
+        try {
+            const audio = this.soundFiles[soundType].cloneNode();
+            audio.volume = this.volume;
+            audio.play().catch(error => {
+                console.warn(`Failed to play ${soundType} sound:`, error);
+            });
+        } catch (error) {
+            console.warn(`Error playing ${soundType} audio file:`, error);
+        }
+    }
+    
+    playGeneratedSound(params) {
+        if (!this.audioContext) return;
+        
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const oscillator2 = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            const masterGain = this.audioContext.createGain();
+            
+            // メインオシレーター
+            oscillator.type = 'triangle';
+            oscillator.frequency.setValueAtTime(params.frequency, this.audioContext.currentTime);
+            
+            // セカンドオシレーター（ハーモニー用）
+            oscillator2.type = 'sine';
+            oscillator2.frequency.setValueAtTime(params.frequency2 || params.frequency * 1.5, this.audioContext.currentTime);
+            
+            // 合体音の場合は周波数を上昇
+            if (params.type === 'merge') {
+                oscillator.frequency.exponentialRampToValueAtTime(
+                    params.frequency2, 
+                    this.audioContext.currentTime + params.duration * 0.7
+                );
+                oscillator2.frequency.exponentialRampToValueAtTime(
+                    params.frequency2 * 1.5, 
+                    this.audioContext.currentTime + params.duration * 0.7
+                );
+            }
+            
+            // エンベロープ設定
+            const now = this.audioContext.currentTime;
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(1, now + params.attack);
+            gainNode.gain.exponentialRampToValueAtTime(params.sustain, now + params.attack + params.decay);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + params.duration);
+            
+            // マスター音量
+            masterGain.gain.setValueAtTime(this.volume, now);
+            
+            // 接続
+            oscillator.connect(gainNode);
+            oscillator2.connect(gainNode);
+            gainNode.connect(masterGain);
+            masterGain.connect(this.audioContext.destination);
+            
+            // 再生
+            oscillator.start(now);
+            oscillator2.start(now);
+            oscillator.stop(now + params.duration);
+            oscillator2.stop(now + params.duration);
+            
+        } catch (error) {
+            console.warn('Error generating sound:', error);
+        }
+    }
+    
+    setVolume(volume) {
+        this.volume = Math.max(0, Math.min(1, volume));
+        
+        // 音声ファイルの音量も更新
+        Object.values(this.soundFiles).forEach(audio => {
+            if (audio) {
+                audio.volume = this.volume;
+            }
+        });
+        
+        this.saveSettings();
+    }
+    
+    toggleSound() {
+        this.soundEnabled = !this.soundEnabled;
+        this.saveSettings();
+        return this.soundEnabled;
+    }
+    
+    loadSettings() {
+        const savedVolume = localStorage.getItem('okome-se-volume');
+        const savedEnabled = localStorage.getItem('okome-se-enabled');
+        
+        if (savedVolume !== null) {
+            this.volume = parseFloat(savedVolume);
+        }
+        if (savedEnabled !== null) {
+            this.soundEnabled = savedEnabled === 'true';
+        }
+    }
+    
+    saveSettings() {
+        localStorage.setItem('okome-se-volume', this.volume.toString());
+        localStorage.setItem('okome-se-enabled', this.soundEnabled.toString());
+    }
+    
+    // ユーザーインタラクション後にAudioContextを開始
+    enableAfterUserGesture() {
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            document.addEventListener('click', () => {
+                this.audioContext.resume().then(() => {
+                    console.log('AudioContext resumed');
+                });
+            }, { once: true });
+        }
+    }
+}
+
 class BGMManager {
     constructor(basePath = '') {
         this.basePath = basePath;
@@ -11,15 +207,21 @@ class BGMManager {
         this.volume = 0.25;
         this.isMuted = false;
         this.isPlaying = false;
+        this.currentBGMIndex = 1;
+        
+        // 保存された設定を読み込み
+        this.loadSettings();
         
         this.loadTrack();
-        this.setupControls();
     }
     
     loadTrack() {
         if (this.currentAudio) {
             this.currentAudio.pause();
         }
+        
+        // 再生状態をリセット
+        this.isPlaying = false;
         
         this.currentAudio = new Audio(this.basePath + '/' + this.bgmTracks[this.currentTrackIndex]);
         this.currentAudio.loop = true;
@@ -35,12 +237,14 @@ class BGMManager {
     }
     
     play() {
-        if (this.currentAudio && !this.isPlaying) {
+        if (this.currentAudio) {
+            console.log('Play method called, isPlaying:', this.isPlaying);
             const playPromise = this.currentAudio.play();
             if (playPromise !== undefined) {
                 playPromise.then(() => {
                     this.isPlaying = true;
                     this.updatePlayButton();
+                    console.log('Playback started successfully');
                 }).catch(error => {
                     console.log('Auto-play was prevented:', error);
                 });
@@ -69,6 +273,7 @@ class BGMManager {
         if (this.currentAudio && !this.isMuted) {
             this.currentAudio.volume = this.volume;
         }
+        this.saveSettings();
     }
     
     toggleMute() {
@@ -77,26 +282,81 @@ class BGMManager {
             this.currentAudio.volume = this.isMuted ? 0 : this.volume;
         }
         this.updateMuteButton();
+        this.saveSettings();
     }
     
     changeTrack(trackIndex) {
         const wasPlaying = this.isPlaying;
+        console.log(`Changing track to index ${trackIndex}, was playing:`, wasPlaying);
         this.currentTrackIndex = trackIndex;
         this.loadTrack();
         if (wasPlaying) {
-            setTimeout(() => this.play(), 100);
+            console.log('Attempting to resume playback...');
+            // 音声ファイルが読み込まれるまで待つ
+            const attemptPlay = () => {
+                console.log('Checking audio ready state:', this.currentAudio?.readyState);
+                if (this.currentAudio && this.currentAudio.readyState >= 2) {
+                    console.log('Audio ready, calling play()');
+                    this.play();
+                } else {
+                    console.log('Audio not ready, retrying in 50ms');
+                    setTimeout(attemptPlay, 50);
+                }
+            };
+            attemptPlay();
         }
     }
     
-    setupControls() {
+    selectBGM(bgmNumber) {
+        console.log(`BGM ${bgmNumber} selected, currently playing:`, this.isPlaying);
+        this.changeTrack(bgmNumber - 1);
+        this.currentBGMIndex = bgmNumber;
+        this.updatePlayButton();
+        this.saveSettings();
+    }
+    
+    loadSettings() {
+        const savedVolume = localStorage.getItem('okome-bgm-volume');
+        const savedMuted = localStorage.getItem('okome-bgm-muted');
+        const savedBGM = localStorage.getItem('okome-bgm-selection');
+        
+        if (savedVolume !== null) {
+            this.volume = parseFloat(savedVolume);
+        }
+        if (savedMuted !== null) {
+            this.isMuted = savedMuted === 'true';
+        }
+        if (savedBGM !== null) {
+            this.currentBGMIndex = parseInt(savedBGM);
+            this.currentTrackIndex = this.currentBGMIndex - 1;
+        }
+    }
+    
+    saveSettings() {
+        localStorage.setItem('okome-bgm-volume', this.volume.toString());
+        localStorage.setItem('okome-bgm-muted', this.isMuted.toString());
+        localStorage.setItem('okome-bgm-selection', this.currentBGMIndex.toString());
+    }
+    
+    setupControls(soundManager = null) {
+        // 設定画面の要素
         const musicIcon = document.getElementById('musicIcon');
         const musicPopup = document.getElementById('musicPopup');
         const musicClose = document.getElementById('musicClose');
+        
+        // BGM関連の要素
         const bgmSelect = document.getElementById('bgmSelect');
         const volumeSlider = document.getElementById('volumeSlider');
-        const volumeValue = document.getElementById('volumeValue');
         const playPauseBtn = document.getElementById('playPauseBtn');
         const muteBtn = document.getElementById('muteBtn');
+        
+        // 効果音関連の要素
+        const sfxVolumeSlider = document.getElementById('sfxVolumeSlider');
+        const sfxTestBtn = document.getElementById('sfxTestBtn');
+        const sfxToggleBtn = document.getElementById('sfxToggleBtn');
+        
+        // 効果音マネージャーの参照を保存
+        this.soundManager = soundManager;
         
         if (musicIcon) {
             musicIcon.addEventListener('click', () => {
@@ -124,11 +384,10 @@ class BGMManager {
             });
         }
         
-        if (volumeSlider && volumeValue) {
+        if (volumeSlider) {
             volumeSlider.addEventListener('input', (e) => {
                 const volume = parseInt(e.target.value);
-                volumeValue.textContent = volume;
-                this.setVolume(volume);
+                this.setVolume(volume); // setVolumeメソッド内で100で割る処理をする
                 
                 const percent = volume / 100;
                 e.target.style.background = `linear-gradient(to right, #667eea 0%, #667eea ${percent * 100}%, #e0e0e0 ${percent * 100}%, #e0e0e0 100%)`;
@@ -149,8 +408,78 @@ class BGMManager {
             });
         }
         
+        // 効果音コントロール
+        if (sfxVolumeSlider && this.soundManager) {
+            sfxVolumeSlider.addEventListener('input', (e) => {
+                const volume = parseInt(e.target.value);
+                this.soundManager.setVolume(volume / 100);
+                
+                // スライダーの視覚的更新
+                const percent = volume / 100;
+                e.target.style.background = `linear-gradient(to right, #f093fb 0%, #f093fb ${percent * 100}%, #e0e0e0 ${percent * 100}%, #e0e0e0 100%)`;
+            });
+        }
+
+        // BGM選択機能
+        const bgmOptions = document.querySelectorAll('.bgm-option');
+        bgmOptions.forEach((option, index) => {
+            option.addEventListener('click', () => {
+                // 全てのオプションからactiveクラスを削除
+                bgmOptions.forEach(opt => opt.classList.remove('active'));
+                // クリックされたオプションにactiveクラスを追加
+                option.classList.add('active');
+                // BGMを変更
+                this.selectBGM(parseInt(option.dataset.bgm));
+            });
+        });
+
+        // 初期選択状態を設定（現在のBGMに基づいて）
+        if (bgmOptions.length > 0) {
+            const currentBgmIndex = this.currentBGMIndex || 1;
+            bgmOptions[currentBgmIndex - 1].classList.add('active');
+        }
+
+        // ミュートボタンのイベントハンドラー
+        const bgmMuteBtn = document.getElementById('bgmMuteBtn');
+        const seMuteBtn = document.getElementById('seMuteBtn');
+        
+        if (bgmMuteBtn) {
+            bgmMuteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleMute();
+                this.updateBgmMuteButton();
+            });
+        }
+        
+        if (seMuteBtn && this.soundManager) {
+            seMuteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.soundManager.toggleSound();
+                this.updateSeMuteButton();
+            });
+        }
+
+        // UIを保存された設定で初期化
+        this.initializeUI();
+        
+        if (sfxTestBtn && this.soundManager) {
+            sfxTestBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.soundManager.playDropSound();
+            });
+        }
+        
+        if (sfxToggleBtn && this.soundManager) {
+            sfxToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const enabled = this.soundManager.toggleSound();
+                sfxToggleBtn.textContent = enabled ? '🔊 効果音OFF' : '🔇 効果音ON';
+            });
+        }
+        
         this.updatePlayButton();
         this.updateMuteButton();
+        this.updateSfxButton();
     }
     
     updatePlayButton() {
@@ -165,6 +494,52 @@ class BGMManager {
         if (muteBtn) {
             muteBtn.textContent = this.isMuted ? '🔇 ミュート解除' : '🔊 ミュート';
         }
+    }
+    
+    updateSfxButton() {
+        const sfxToggleBtn = document.getElementById('sfxToggleBtn');
+        if (sfxToggleBtn && this.soundManager) {
+            sfxToggleBtn.textContent = this.soundManager.soundEnabled ? '🔊 効果音OFF' : '🔇 効果音ON';
+        }
+    }
+    
+    updateBgmMuteButton() {
+        const bgmMuteBtn = document.getElementById('bgmMuteBtn');
+        if (bgmMuteBtn) {
+            bgmMuteBtn.textContent = this.isMuted ? '🔇' : '🔊';
+            bgmMuteBtn.classList.toggle('muted', this.isMuted);
+        }
+    }
+    
+    updateSeMuteButton() {
+        const seMuteBtn = document.getElementById('seMuteBtn');
+        if (seMuteBtn && this.soundManager) {
+            seMuteBtn.textContent = this.soundManager.soundEnabled ? '🔊' : '🔇';
+            seMuteBtn.classList.toggle('muted', !this.soundManager.soundEnabled);
+        }
+    }
+    
+    initializeUI() {
+        // 保存された設定でスライダーとボタンを初期化
+        const volumeSlider = document.getElementById('volumeSlider');
+        const sfxVolumeSlider = document.getElementById('sfxVolumeSlider');
+        
+        if (volumeSlider) {
+            const volume = Math.round(this.volume * 100);
+            volumeSlider.value = volume;
+            const percent = volume / 100;
+            volumeSlider.style.background = `linear-gradient(to right, #667eea 0%, #667eea ${percent * 100}%, #e0e0e0 ${percent * 100}%, #e0e0e0 100%)`;
+        }
+        
+        if (sfxVolumeSlider && this.soundManager) {
+            const volume = Math.round(this.soundManager.volume * 100);
+            sfxVolumeSlider.value = volume;
+            const percent = volume / 100;
+            sfxVolumeSlider.style.background = `linear-gradient(to right, #f093fb 0%, #f093fb ${percent * 100}%, #e0e0e0 ${percent * 100}%, #e0e0e0 100%)`;
+        }
+        
+        this.updateBgmMuteButton();
+        this.updateSeMuteButton();
     }
     
     enableUserInteraction() {
@@ -211,8 +586,12 @@ class OkomeGame {
             ? '/okome-game' : '';
         console.log('Base path set to:', this.basePath, 'hostname:', location.hostname, 'pathname:', location.pathname);
         
-        // BGMマネージャー初期化
+        // 効果音マネージャー初期化
+        this.soundManager = new SoundEffectManager();
+        
+        // BGMマネージャー初期化（効果音マネージャーの参照を渡す）
         this.bgmManager = new BGMManager(this.basePath);
+        this.bgmManager.setupControls(this.soundManager);
         
         // スイカゲームと同じスコア体系
         this.dogTypes = [
@@ -244,6 +623,13 @@ class OkomeGame {
         this.gameLoop();
         // BGM自動再生のための準備
         this.bgmManager.enableUserInteraction();
+        // 効果音の準備
+        this.soundManager.enableAfterUserGesture();
+        
+        // 音声ファイルを使用する場合の設定例（コメントアウト）
+        // this.soundManager.setSoundFile('drop', `${this.basePath}/sound/drop.wav`);
+        // this.soundManager.setSoundFile('merge', `${this.basePath}/sound/merge.wav`);
+        
         console.log('Game initialization complete');
     }
     
@@ -307,7 +693,7 @@ class OkomeGame {
         };
         
         // 物理エンジンの設定を最適化（落下確実性優先）
-        this.engine.world.gravity.y = 1.0; // 重力を強化
+        this.engine.world.gravity.y = 0.8; // 重力をややマイルドに
         this.engine.constraintIterations = 4; // 制約の反復を増加
         this.engine.positionIterations = 8;   // 位置の反復を増加
         this.engine.velocityIterations = 6;   // 速度の反復を増加
@@ -317,8 +703,8 @@ class OkomeGame {
         const walls = [
             Bodies.rectangle(200, 610, 400, 20, { 
                 isStatic: true,
-                friction: 0.5,
-                restitution: 0.3,
+                friction: 0.3,     // 地面の摩擦を適度に
+                restitution: 0.05, // 地面での跳ね返りを大幅に減らす
                 collisionFilter: {
                     category: this.collisionCategories.WALL,
                     mask: this.collisionCategories.DROPPED_DOG | this.collisionCategories.PREVIEW_DOG
@@ -326,8 +712,8 @@ class OkomeGame {
             }),
             Bodies.rectangle(-10, 300, 20, 600, { 
                 isStatic: true,
-                friction: 0.3,
-                restitution: 0.2,
+                friction: 0.2,     // 壁の摩擦を減らして転がりやすく
+                restitution: 0.1,  // 壁での跳ね返りを大幅に減らす
                 collisionFilter: {
                     category: this.collisionCategories.WALL,
                     mask: this.collisionCategories.DROPPED_DOG | this.collisionCategories.PREVIEW_DOG
@@ -335,8 +721,8 @@ class OkomeGame {
             }),
             Bodies.rectangle(410, 300, 20, 600, { 
                 isStatic: true,
-                friction: 0.3,
-                restitution: 0.2,
+                friction: 0.2,     // 壁の摩擦を減らして転がりやすく
+                restitution: 0.1,  // 壁での跳ね返りを大幅に減らす
                 collisionFilter: {
                     category: this.collisionCategories.WALL,
                     mask: this.collisionCategories.DROPPED_DOG | this.collisionCategories.PREVIEW_DOG
@@ -383,7 +769,8 @@ class OkomeGame {
             this.mouseX = Math.max(30, Math.min(370, e.clientX - rect.left));
             
             if (this.currentDog) {
-                const safeY = this.calculateSafeDropPosition(this.mouseX, this.currentDog.height);
+                const dogHeight = this.currentDog.height || 50; // フォールバック値
+                const safeY = this.calculateSafeDropPosition(this.mouseX, dogHeight);
                 Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: safeY });
             }
         });
@@ -398,7 +785,8 @@ class OkomeGame {
             this.mouseX = Math.max(30, Math.min(370, touch.clientX - rect.left));
             
             if (this.currentDog) {
-                const safeY = this.calculateSafeDropPosition(this.mouseX, this.currentDog.height);
+                const dogHeight = this.currentDog.height || 50; // フォールバック値
+                const safeY = this.calculateSafeDropPosition(this.mouseX, dogHeight);
                 Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: safeY });
             }
         }, { passive: false });
@@ -413,7 +801,8 @@ class OkomeGame {
             // クリック位置に犬を移動してからドロップ
             if (this.currentDog) {
                 this.mouseX = clickX;
-                const safeY = this.calculateSafeDropPosition(this.mouseX, this.currentDog.height);
+                const dogHeight = this.currentDog.height || 50; // フォールバック値
+                const safeY = this.calculateSafeDropPosition(this.mouseX, dogHeight);
                 Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: safeY });
                 console.log('Click drop at position:', this.mouseX, 'safeY:', safeY);
             }
@@ -437,7 +826,8 @@ class OkomeGame {
             // タッチ位置に犬を移動
             if (this.currentDog) {
                 this.mouseX = touchX;
-                const safeY = this.calculateSafeDropPosition(this.mouseX, this.currentDog.height);
+                const dogHeight = this.currentDog.height || 50; // フォールバック値
+                const safeY = this.calculateSafeDropPosition(this.mouseX, dogHeight);
                 Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: safeY });
                 console.log('Dog moved to touch position:', this.mouseX, 'safeY:', safeY);
             }
@@ -544,8 +934,8 @@ class OkomeGame {
         
         const body = Matter.Bodies.rectangle(x, safeDropY, dogConfig.width, dogConfig.height, {
             isStatic: true, // 初期は静的状態
-            restitution: 0.4, // 反発係数を統一
-            friction: 0.6,    // 摩擦係数を統一
+            restitution: 0.15, // 反発係数を大幅に減らして跳ね上がりを抑制
+            friction: 0.4,     // 摩擦を減らして転がりやすく
             frictionAir: 0.01, // 空気摩擦を減らして必ず落下させる
             density: 0.001 + sizeRatio * 0.0005, // 密度を適切に設定
             chamfer: { radius: dogConfig.width * 0.25 },
@@ -626,7 +1016,8 @@ class OkomeGame {
         
         // ドロップ前に最新の位置に移動してから落とす
         if (this.currentDog.body.position.x !== this.mouseX) {
-            const safeY = this.calculateSafeDropPosition(this.mouseX, this.currentDog.height);
+            const dogHeight = this.currentDog.height || 50; // フォールバック値
+            const safeY = this.calculateSafeDropPosition(this.mouseX, dogHeight);
             Matter.Body.setPosition(this.currentDog.body, { x: this.mouseX, y: safeY });
             console.log('Updated dog position before drop to:', this.mouseX, 'safeY:', safeY);
         }
@@ -638,6 +1029,9 @@ class OkomeGame {
         
         // 物理ボディを動的に変更（落下させる）
         Matter.Body.setStatic(this.currentDog.body, false);
+        
+        // ドロップ効果音を再生
+        this.soundManager.playDropSound();
         
         // ドロップ時にコリジョンカテゴリを変更（他の犬と衝突可能に）
         this.currentDog.body.collisionFilter.category = this.collisionCategories.DROPPED_DOG;
@@ -708,6 +1102,9 @@ class OkomeGame {
         const newConfig = this.dogTypes.find(d => d.type === newType);
         if (!newConfig) return;
         
+        // 合体効果音を再生
+        this.soundManager.playMergeSound();
+        
         const centerX = (dogA.body.position.x + dogB.body.position.x) / 2;
         const centerY = Math.min(dogA.body.position.y, dogB.body.position.y);
         
@@ -718,8 +1115,8 @@ class OkomeGame {
         // 合体後の犬も同様にサイズ比率に応じた物理特性
         const newSizeRatio = newConfig.width / 20;
         const newBody = Matter.Bodies.rectangle(centerX, centerY, newConfig.width, newConfig.height, {
-            restitution: Math.max(0.3, 0.5 - newSizeRatio * 0.02),
-            friction: Math.min(0.8, 0.4 + newSizeRatio * 0.03),
+            restitution: Math.max(0.1, 0.2 - newSizeRatio * 0.01), // 反発を大幅に減らす
+            friction: Math.max(0.3, 0.5 - newSizeRatio * 0.02),   // 摩擦も減らして転がりやすく
             frictionAir: 0.005 + newSizeRatio * 0.002,
             density: 0.0008 + newSizeRatio * 0.0002,
             chamfer: { radius: newConfig.width * 0.25 },
