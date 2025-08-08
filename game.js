@@ -245,6 +245,26 @@ class OkomeGame {
             this.togglePause();
         });
         
+        document.getElementById('helpIcon').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Help icon clicked');
+            this.showHelp();
+        });
+        
+        document.getElementById('helpClose').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.hideHelp();
+        });
+        
+        // ヘルプポップアップの背景クリックで閉じる
+        document.getElementById('helpPopup').addEventListener('click', (e) => {
+            if (e.target.id === 'helpPopup') {
+                this.hideHelp();
+            }
+        });
+        
         // 旧ボタンとの互換性
         const dropBtn = document.getElementById('dropButton');
         const restartBtn = document.getElementById('restartButton');
@@ -783,10 +803,118 @@ class OkomeGame {
         this.ctx.restore();
     }
     
-    // 成長の輪は削除され、新しいUIでは使用されない
-    createGrowthCircle() {
-        // スイカゲーム風UIでは成長の輪は表示しない
-        console.log('Growth circle not used in new UI');
+    // ヘルプ用の成長の輪を作成
+    createGrowthCircle(containerId = 'helpGrowthCircle') {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.log('Growth circle container not found:', containerId);
+            return;
+        }
+        
+        container.innerHTML = ''; // クリアして再生成
+        
+        console.log('Creating growth circle for help...');
+        
+        // キャッシュされた色配列を作成して再利用
+        if (!this.cachedColors) {
+            this.cachedColors = [
+                '#ffb3ba', '#ffdfba', '#ffffba', '#baffc9',
+                '#bae1ff', '#c9baff', '#ffbac9', '#ffd4ba',
+                '#d4ffba', '#baffdf', '#bac9ff'
+            ];
+        }
+        
+        // ヘルプ用のサイズ設定
+        const isMobile = window.innerWidth <= 480;
+        const helpCircleConfig = {
+            baseRadius: isMobile ? 60 : 100,
+            centerX: isMobile ? 125 : 150,
+            centerY: isMobile ? 125 : 150,
+            scale: isMobile ? 0.15 : 0.2
+        };
+        
+        const { baseRadius, centerX, centerY, scale } = helpCircleConfig;
+        
+        // DocumentFragmentでDOM操作を最適化
+        const fragment = document.createDocumentFragment();
+        
+        this.dogTypes.forEach((dogType, index) => {
+            console.log(`Creating help growth item for type: ${dogType.type}, image exists: ${dogType.image ? 'yes' : 'no'}`);
+            
+            const angle = (index / this.dogTypes.length) * 2 * Math.PI - Math.PI / 2;
+            
+            const itemWidth = Math.max(dogType.width * scale, 16);
+            const itemHeight = Math.max(dogType.height * scale, 16);
+            const maxSize = Math.max(itemWidth, itemHeight);
+            
+            const radiusOffset = Math.max(0, (maxSize - 16) * 0.2);
+            const currentRadius = baseRadius + radiusOffset;
+            
+            const x = centerX + currentRadius * Math.cos(angle) - itemWidth / 2;
+            const y = centerY + currentRadius * Math.sin(angle) - itemHeight / 2;
+            
+            const item = document.createElement('div');
+            item.className = 'growth-item';
+            item.style.cssText = `left: ${x}px; top: ${y}px; width: ${itemWidth}px; height: ${itemHeight}px;`;
+            
+            const img = document.createElement('img');
+            img.alt = `okome${dogType.type}`;
+            img.style.cssText = `width: ${itemWidth}px; height: ${itemHeight}px;`;
+            
+            const placeholder = document.createElement('div');
+            placeholder.className = 'growth-placeholder';
+            placeholder.style.cssText = `background: ${this.cachedColors[index]}; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #333; font-weight: bold; width: ${itemWidth}px; height: ${itemHeight}px; font-size: ${Math.max(8, itemWidth / 3)}px;`;
+            placeholder.textContent = dogType.type;
+            
+            const tooltip = document.createElement('div');
+            tooltip.className = 'growth-tooltip';
+            tooltip.textContent = `Lv.${dogType.type} (${dogType.width}×${dogType.height})`;
+            
+            // 画像が既に読み込み済みの場合
+            if (dogType.image) {
+                img.src = dogType.image.src;
+                img.style.display = 'block';
+                placeholder.style.display = 'none';
+                console.log(`Using loaded image for help type ${dogType.type}`);
+            } else {
+                // 画像がない場合はプレースホルダーを表示
+                img.style.display = 'none';
+                img.src = `${this.basePath}/image/okome${dogType.type}.png`;
+                console.log(`Using placeholder for help type ${dogType.type}`);
+                
+                // 画像読み込み成功時の処理
+                img.onload = () => {
+                    console.log(`Help growth circle image loaded for type ${dogType.type}`);
+                    img.style.display = 'block';
+                    placeholder.style.display = 'none';
+                };
+                
+                img.onerror = () => {
+                    console.error(`Help growth circle image failed to load for type ${dogType.type}`);
+                    img.style.display = 'none';
+                    placeholder.style.display = 'flex';
+                };
+            }
+            
+            item.appendChild(img);
+            item.appendChild(placeholder);
+            item.appendChild(tooltip);
+            fragment.appendChild(item);
+        });
+        
+        container.appendChild(fragment);
+        console.log('Help growth circle created');
+    }
+    
+    showHelp() {
+        console.log('Showing help popup');
+        document.getElementById('helpPopup').style.display = 'flex';
+        this.createGrowthCircle('helpGrowthCircle');
+    }
+    
+    hideHelp() {
+        console.log('Hiding help popup');
+        document.getElementById('helpPopup').style.display = 'none';
     }
 }
 

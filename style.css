@@ -262,6 +262,201 @@ body {
     transform: translateY(-1px);
 }
 
+/* ヘルプポップアップ */
+.help-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.help-content {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.help-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.help-header h2 {
+    margin: 0;
+    color: #5d4037;
+    font-size: 1.8em;
+    font-weight: bold;
+}
+
+.help-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    padding: 5px;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.help-close:hover {
+    background: #f0f0f0;
+    color: #666;
+}
+
+.help-body {
+    padding: 20px 25px 25px;
+}
+
+.help-body p {
+    margin: 0 0 20px 0;
+    color: #666;
+    font-size: 1.1em;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.help-body .growth-circle {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 0 auto 25px;
+    background: radial-gradient(circle, rgba(255, 248, 220, 0.9) 30%, rgba(255, 235, 185, 0.8) 70%);
+    border-radius: 50%;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.help-tips {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.help-tips h3 {
+    margin: 0 0 15px 0;
+    color: #5d4037;
+    font-size: 1.3em;
+    text-align: center;
+}
+
+.help-tips ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.help-tips li {
+    margin: 8px 0;
+    padding-left: 20px;
+    color: #666;
+    font-size: 0.95em;
+    position: relative;
+    line-height: 1.4;
+}
+
+.help-tips li::before {
+    content: "•";
+    color: #f39c12;
+    font-weight: bold;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+/* 成長の輪アイテム（ヘルプ用） */
+.help-body .growth-item {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.help-body .growth-item:hover {
+    transform: scale(1.2);
+    z-index: 10;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.help-body .growth-item img {
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.help-body .growth-placeholder {
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    color: #333;
+}
+
+.help-body .growth-tooltip {
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 20;
+}
+
+.help-body .growth-item:hover .growth-tooltip {
+    opacity: 1;
+}
+
 /* レスポンシブ対応 */
 @media (max-width: 480px) {
     .game-container {
@@ -272,12 +467,12 @@ body {
     }
     
     .top-bar {
-        gap: 4px;
+        gap: 3px;
     }
     
     .circle-icon {
-        width: 60px;
-        height: 60px;
+        width: 55px;
+        height: 55px;
     }
     
     .icon-label {
@@ -302,6 +497,33 @@ body {
         height: calc(100vh - 200px);
         max-width: 380px;
         max-height: 600px;
+    }
+    
+    /* ヘルプポップアップのモバイル対応 */
+    .help-body .growth-circle {
+        width: 250px;
+        height: 250px;
+    }
+    
+    .help-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .help-header {
+        padding: 15px 20px 10px;
+    }
+    
+    .help-header h2 {
+        font-size: 1.5em;
+    }
+    
+    .help-body {
+        padding: 15px 20px 20px;
+    }
+    
+    .help-tips {
+        padding: 15px;
     }
 }
 

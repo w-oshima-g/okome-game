@@ -57,6 +57,9 @@
                 <div class="circle-icon" id="resetIcon">
                     <div class="icon-symbol">↻</div>
                 </div>
+                <div class="circle-icon" id="helpIcon">
+                    <div class="icon-symbol">?</div>
+                </div>
             </div>
         </div>
         
@@ -85,6 +88,29 @@
                 <h2>Game Over!</h2>
                 <p>Final Score: <span id="finalScore">0</span></p>
                 <button id="playAgainButton">Play Again</button>
+            </div>
+        </div>
+        
+        <!-- ヘルプポップアップ -->
+        <div class="help-popup" id="helpPopup" style="display: none;">
+            <div class="help-content">
+                <div class="help-header">
+                    <h2>成長の輪</h2>
+                    <button class="help-close" id="helpClose">×</button>
+                </div>
+                <div class="help-body">
+                    <p>同じレベルの犬を合体させて、どんどん成長させよう！</p>
+                    <div class="growth-circle" id="helpGrowthCircle"></div>
+                    <div class="help-tips">
+                        <h3>遊び方</h3>
+                        <ul>
+                            <li>クリック/タップで犬をドロップ</li>
+                            <li>同じレベルの犬同士がぶつかると合体</li>
+                            <li>高レベルほど高スコア</li>
+                            <li>赤い線を越えるとゲームオーバー</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
         
