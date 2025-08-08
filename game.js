@@ -231,31 +231,69 @@ class BGMManager {
         // 再生状態をリセット
         this.isPlaying = false;
         
-        this.currentAudio = new Audio(this.basePath + '/' + this.bgmTracks[this.currentTrackIndex]);
+        const trackPath = this.basePath + '/' + this.bgmTracks[this.currentTrackIndex];
+        console.log('Loading BGM track:', trackPath);
+        
+        this.currentAudio = new Audio(trackPath);
         this.currentAudio.loop = true;
         this.currentAudio.volume = this.isMuted ? 0 : this.volume;
         
         this.currentAudio.addEventListener('canplaythrough', () => {
             console.log('BGM loaded:', this.bgmTracks[this.currentTrackIndex]);
+            // デバッグ用alert
+            if (window.location.search.includes('debug')) {
+                alert('BGM loaded: ' + this.bgmTracks[this.currentTrackIndex]);
+            }
         });
         
         this.currentAudio.addEventListener('error', (e) => {
             console.error('BGM load error:', e);
+            // デバッグ用alert
+            if (window.location.search.includes('debug')) {
+                alert('BGM load error: ' + trackPath);
+            }
+        });
+        
+        this.currentAudio.addEventListener('loadstart', () => {
+            console.log('BGM load started:', trackPath);
         });
     }
     
     play() {
         if (this.currentAudio) {
-            console.log('Play method called, isPlaying:', this.isPlaying);
+            console.log('Play method called, isPlaying:', this.isPlaying, 'volume:', this.currentAudio.volume);
+            
+            // デバッグ用alert
+            if (window.location.search.includes('debug')) {
+                alert('BGM play called - volume: ' + this.currentAudio.volume + ', muted: ' + this.isMuted);
+            }
+            
             const playPromise = this.currentAudio.play();
             if (playPromise !== undefined) {
                 playPromise.then(() => {
                     this.isPlaying = true;
                     this.updatePlayButton();
                     console.log('Playback started successfully');
+                    
+                    // デバッグ用alert
+                    if (window.location.search.includes('debug')) {
+                        alert('BGM started successfully');
+                    }
                 }).catch(error => {
                     console.log('Auto-play was prevented:', error);
+                    
+                    // デバッグ用alert
+                    if (window.location.search.includes('debug')) {
+                        alert('BGM play error: ' + error.message);
+                    }
                 });
+            }
+        } else {
+            console.log('No currentAudio to play');
+            
+            // デバッグ用alert
+            if (window.location.search.includes('debug')) {
+                alert('No BGM audio loaded');
             }
         }
     }
@@ -372,6 +410,12 @@ class BGMManager {
         if (musicIcon) {
             musicIcon.addEventListener('click', () => {
                 musicPopup.style.display = 'flex';
+                
+                // 設定画面を開いたときにBGMが再生されていなければ自動再生
+                if (!this.isPlaying && this.currentAudio) {
+                    console.log('Auto-starting BGM from music icon click');
+                    this.play();
+                }
             });
         }
         
@@ -408,6 +452,13 @@ class BGMManager {
         if (playPauseBtn) {
             playPauseBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                console.log('Play/Pause button clicked, current state:', this.isPlaying);
+                
+                // デバッグ用alert
+                if (window.location.search.includes('debug')) {
+                    alert('Play/Pause clicked - currently playing: ' + this.isPlaying);
+                }
+                
                 this.togglePlayPause();
             });
         }
@@ -447,8 +498,25 @@ class BGMManager {
                 bgmOptions.forEach(opt => opt.classList.remove('active'));
                 // クリックされたオプションにactiveクラスを追加
                 option.classList.add('active');
-                // BGMを変更
-                this.selectBGM(parseInt(option.dataset.bgm));
+                
+                // BGMを変更して自動再生
+                const bgmNumber = parseInt(option.dataset.bgm);
+                console.log('BGM selected:', bgmNumber);
+                
+                // デバッグ用alert
+                if (window.location.search.includes('debug')) {
+                    alert('BGM selected: ' + bgmNumber);
+                }
+                
+                this.selectBGM(bgmNumber);
+                
+                // 選択後に自動再生
+                if (!this.isPlaying) {
+                    setTimeout(() => {
+                        console.log('Auto-starting selected BGM');
+                        this.play();
+                    }, 500);
+                }
             });
         });
 
