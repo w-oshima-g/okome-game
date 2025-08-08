@@ -1,4 +1,4 @@
-const CACHE_NAME = 'okome-game-v1.2.0';
+const CACHE_NAME = 'okome-game-v1.4.0';
 
 // GitHub Pages向けの設定 - リポジトリ名を含むパス
 const isGitHubPages = location.hostname.includes('github.io');
@@ -11,17 +11,17 @@ const urlsToCache = [
   `${basePath}/game.js`,
   `${basePath}/manifest.json`,
   `${basePath}/favicon.ico`,
-  `${basePath}/image/okome1.jpg`,
-  `${basePath}/image/okome2.jpg`,
-  `${basePath}/image/okome3.jpg`,
-  `${basePath}/image/okome4.jpg`,
-  `${basePath}/image/okome5.jpg`,
-  `${basePath}/image/okome6.jpg`,
-  `${basePath}/image/okome7.jpg`,
-  `${basePath}/image/okome8.jpg`,
-  `${basePath}/image/okome9.jpg`,
-  `${basePath}/image/okome10.jpg`,
-  `${basePath}/image/okome11.jpg`,
+  `${basePath}/image/okome1.png`,
+  `${basePath}/image/okome2.png`,
+  `${basePath}/image/okome3.png`,
+  `${basePath}/image/okome4.png`,
+  `${basePath}/image/okome5.png`,
+  `${basePath}/image/okome6.png`,
+  `${basePath}/image/okome7.png`,
+  `${basePath}/image/okome8.png`,
+  `${basePath}/image/okome9.png`,
+  `${basePath}/image/okome10.png`,
+  `${basePath}/image/okome11.png`,
   `${basePath}/icons/icon-57.png`,
   `${basePath}/icons/icon-72.png`,
   `${basePath}/icons/icon-114.png`,
