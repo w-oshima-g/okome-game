@@ -398,12 +398,6 @@ class BGMManager {
         if (volumeSlider) {
             volumeSlider.addEventListener('input', (e) => {
                 const volume = parseInt(e.target.value);
-                
-                // スマホでAudioContextを再開
-                if (this.currentAudio && this.currentAudio.readyState > 0) {
-                    this.currentAudio.load(); // 音声ファイルを再読み込み
-                }
-                
                 this.setVolume(volume); // setVolumeメソッド内で100で割る処理をする
                 
                 const percent = volume / 100;
@@ -565,6 +559,9 @@ class BGMManager {
         
         this.updateBgmMuteButton();
         this.updateSeMuteButton();
+        this.updatePlayButton();
+        
+        console.log('UI initialized - BGM volume:', this.volume, 'muted:', this.isMuted, 'playing:', this.isPlaying);
     }
     
     enableUserInteraction() {
@@ -584,11 +581,6 @@ class BGMManager {
             
             if (isTargetElement) {
                 console.log('User interaction detected for audio context');
-                
-                // BGMオーディオコンテキストを開始
-                if (this.currentAudio) {
-                    this.currentAudio.load();
-                }
                 
                 // Sound Effects AudioContext を初期化
                 if (this.soundManager && this.soundManager.audioContext && this.soundManager.audioContext.state === 'suspended') {
