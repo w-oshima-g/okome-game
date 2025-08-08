@@ -1,0 +1,8 @@
+# 追加の最適化項目
+image_original/
+*.DS_Store
+test.html
+growth-guide.html
+server.py
+sample/
+.claude/
