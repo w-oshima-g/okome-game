@@ -60,6 +60,9 @@
                 <div class="circle-icon" id="helpIcon">
                     <div class="icon-symbol">?</div>
                 </div>
+                <div class="circle-icon" id="musicIcon">
+                    <div class="icon-symbol">♪</div>
+                </div>
             </div>
         </div>
         
@@ -109,6 +112,36 @@
                             <li>高レベルほど高スコア</li>
                             <li>赤い線を越えるとゲームオーバー</li>
                         </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 音楽コントロールポップアップ -->
+        <div class="music-popup" id="musicPopup" style="display: none;">
+            <div class="music-content">
+                <div class="music-header">
+                    <h2>BGM設定</h2>
+                    <button class="music-close" id="musicClose">×</button>
+                </div>
+                <div class="music-body">
+                    <div class="music-controls">
+                        <div class="music-control-group">
+                            <label>BGM選択</label>
+                            <select id="bgmSelect">
+                                <option value="0">BGM 1 (基本)</option>
+                                <option value="1">BGM 2 (軽快)</option>
+                                <option value="2">BGM 3 (落ち着き)</option>
+                            </select>
+                        </div>
+                        <div class="music-control-group">
+                            <label>音量: <span id="volumeValue">25</span>%</label>
+                            <input type="range" id="volumeSlider" min="0" max="100" value="25">
+                        </div>
+                        <div class="music-control-group">
+                            <button id="playPauseBtn" class="music-btn">▶ 再生</button>
+                            <button id="muteBtn" class="music-btn">🔊 ミュート切替</button>
+                        </div>
                     </div>
                 </div>
             </div>

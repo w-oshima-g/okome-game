@@ -1,3 +1,194 @@
+class BGMManager {
+    constructor(basePath = '') {
+        this.basePath = basePath;
+        this.bgmTracks = [
+            'sound/okomebgm.mp3',
+            'sound/okomebgm2.mp3',
+            'sound/okomebgm3.mp3'
+        ];
+        this.currentTrackIndex = 0;
+        this.currentAudio = null;
+        this.volume = 0.25;
+        this.isMuted = false;
+        this.isPlaying = false;
+        
+        this.loadTrack();
+        this.setupControls();
+    }
+    
+    loadTrack() {
+        if (this.currentAudio) {
+            this.currentAudio.pause();
+        }
+        
+        this.currentAudio = new Audio(this.basePath + '/' + this.bgmTracks[this.currentTrackIndex]);
+        this.currentAudio.loop = true;
+        this.currentAudio.volume = this.isMuted ? 0 : this.volume;
+        
+        this.currentAudio.addEventListener('canplaythrough', () => {
+            console.log('BGM loaded:', this.bgmTracks[this.currentTrackIndex]);
+        });
+        
+        this.currentAudio.addEventListener('error', (e) => {
+            console.error('BGM load error:', e);
+        });
+    }
+    
+    play() {
+        if (this.currentAudio && !this.isPlaying) {
+            const playPromise = this.currentAudio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    this.isPlaying = true;
+                    this.updatePlayButton();
+                }).catch(error => {
+                    console.log('Auto-play was prevented:', error);
+                });
+            }
+        }
+    }
+    
+    pause() {
+        if (this.currentAudio && this.isPlaying) {
+            this.currentAudio.pause();
+            this.isPlaying = false;
+            this.updatePlayButton();
+        }
+    }
+    
+    togglePlayPause() {
+        if (this.isPlaying) {
+            this.pause();
+        } else {
+            this.play();
+        }
+    }
+    
+    setVolume(volume) {
+        this.volume = volume / 100;
+        if (this.currentAudio && !this.isMuted) {
+            this.currentAudio.volume = this.volume;
+        }
+    }
+    
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+        if (this.currentAudio) {
+            this.currentAudio.volume = this.isMuted ? 0 : this.volume;
+        }
+        this.updateMuteButton();
+    }
+    
+    changeTrack(trackIndex) {
+        const wasPlaying = this.isPlaying;
+        this.currentTrackIndex = trackIndex;
+        this.loadTrack();
+        if (wasPlaying) {
+            setTimeout(() => this.play(), 100);
+        }
+    }
+    
+    setupControls() {
+        const musicIcon = document.getElementById('musicIcon');
+        const musicPopup = document.getElementById('musicPopup');
+        const musicClose = document.getElementById('musicClose');
+        const bgmSelect = document.getElementById('bgmSelect');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeValue = document.getElementById('volumeValue');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const muteBtn = document.getElementById('muteBtn');
+        
+        if (musicIcon) {
+            musicIcon.addEventListener('click', () => {
+                musicPopup.style.display = 'flex';
+            });
+        }
+        
+        if (musicClose) {
+            musicClose.addEventListener('click', () => {
+                musicPopup.style.display = 'none';
+            });
+        }
+        
+        if (musicPopup) {
+            musicPopup.addEventListener('click', (e) => {
+                if (e.target === musicPopup) {
+                    musicPopup.style.display = 'none';
+                }
+            });
+        }
+        
+        if (bgmSelect) {
+            bgmSelect.addEventListener('change', (e) => {
+                this.changeTrack(parseInt(e.target.value));
+            });
+        }
+        
+        if (volumeSlider && volumeValue) {
+            volumeSlider.addEventListener('input', (e) => {
+                const volume = parseInt(e.target.value);
+                volumeValue.textContent = volume;
+                this.setVolume(volume);
+                
+                const percent = volume / 100;
+                e.target.style.background = `linear-gradient(to right, #667eea 0%, #667eea ${percent * 100}%, #e0e0e0 ${percent * 100}%, #e0e0e0 100%)`;
+            });
+        }
+        
+        if (playPauseBtn) {
+            playPauseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.togglePlayPause();
+            });
+        }
+        
+        if (muteBtn) {
+            muteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleMute();
+            });
+        }
+        
+        this.updatePlayButton();
+        this.updateMuteButton();
+    }
+    
+    updatePlayButton() {
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        if (playPauseBtn) {
+            playPauseBtn.textContent = this.isPlaying ? '⏸ 停止' : '▶ 再生';
+        }
+    }
+    
+    updateMuteButton() {
+        const muteBtn = document.getElementById('muteBtn');
+        if (muteBtn) {
+            muteBtn.textContent = this.isMuted ? '🔇 ミュート解除' : '🔊 ミュート';
+        }
+    }
+    
+    enableUserInteraction() {
+        // BGM自動再生のためのイベントリスナーを設定
+        // ゲーム領域以外での最初のクリックでBGMを開始
+        const gameCanvas = document.getElementById('gameCanvas');
+        
+        const handleFirstInteraction = (event) => {
+            // ゲームキャンバスのクリックは除外
+            if (event.target === gameCanvas) {
+                return;
+            }
+            
+            if (!this.isPlaying && this.currentAudio) {
+                this.play();
+                // リスナーを削除（一度だけ実行）
+                document.removeEventListener('click', handleFirstInteraction);
+            }
+        };
+        
+        document.addEventListener('click', handleFirstInteraction);
+    }
+}
+
 class OkomeGame {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
@@ -16,6 +207,9 @@ class OkomeGame {
         this.basePath = location.hostname.includes('github.io') && location.pathname.includes('/okome-game/') 
             ? '/okome-game' : '';
         console.log('Base path set to:', this.basePath, 'hostname:', location.hostname, 'pathname:', location.pathname);
+        
+        // BGMマネージャー初期化
+        this.bgmManager = new BGMManager(this.basePath);
         
         // スイカゲームと同じスコア体系
         this.dogTypes = [
@@ -45,6 +239,8 @@ class OkomeGame {
         // 初期の犬を作成
         this.createNextDog(this.mouseX);
         this.gameLoop();
+        // BGM自動再生のための準備
+        this.bgmManager.enableUserInteraction();
         console.log('Game initialization complete');
     }
     
@@ -185,7 +381,7 @@ class OkomeGame {
         
         // クリックイベント（PC用）
         this.canvas.addEventListener('click', (e) => {
-            if (!this.gameRunning) return;
+            if (!this.gameRunning || this.isPaused) return;
             
             const rect = this.canvas.getBoundingClientRect();
             const clickX = Math.max(30, Math.min(370, e.clientX - rect.left));
@@ -203,7 +399,7 @@ class OkomeGame {
         let touchStarted = false;
         
         this.canvas.addEventListener('touchstart', (e) => {
-            if (!this.gameRunning) return;
+            if (!this.gameRunning || this.isPaused) return;
             e.preventDefault();
             touchStarted = true;
             
@@ -222,7 +418,7 @@ class OkomeGame {
         }, { passive: false });
         
         this.canvas.addEventListener('touchend', (e) => {
-            if (!this.gameRunning || !touchStarted) return;
+            if (!this.gameRunning || this.isPaused || !touchStarted) return;
             e.preventDefault();
             touchStarted = false;
             
@@ -290,6 +486,10 @@ class OkomeGame {
     
     // フィードバック付きドロップ
     dropDogWithFeedback() {
+        if (this.isPaused) {
+            console.log('Game is paused, dropping disabled');
+            return;
+        }
         console.log('dropDogWithFeedback called at position:', this.mouseX);
         this.vibrate(50); // 50ms振動
         this.dropDog();

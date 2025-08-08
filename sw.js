@@ -1,4 +1,4 @@
-const CACHE_NAME = 'okome-game-v2.0.0';
+const CACHE_NAME = 'okome-game-v2.1.0';
 
 // GitHub Pages向けの設定 - リポジトリ名を含むパス
 const isGitHubPages = location.hostname.includes('github.io');
@@ -28,6 +28,9 @@ const urlsToCache = [
   `${basePath}/icons/icon-144.png`,
   `${basePath}/icons/icon-192.png`,
   `${basePath}/icons/icon-512.png`,
+  `${basePath}/sound/okomebgm.mp3`,
+  `${basePath}/sound/okomebgm2.mp3`,
+  `${basePath}/sound/okomebgm3.mp3`,
   'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js'
 ];
 
