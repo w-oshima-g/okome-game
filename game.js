@@ -236,7 +236,9 @@ class BGMManager {
         
         this.currentAudio = new Audio(trackPath);
         this.currentAudio.loop = true;
-        this.currentAudio.volume = this.isMuted ? 0 : this.volume;
+        const initialVolume = this.isMuted ? 0 : this.volume;
+        this.currentAudio.volume = initialVolume;
+        console.log('Audio created with volume:', initialVolume, 'muted:', this.isMuted, 'base volume:', this.volume);
         
         this.currentAudio.addEventListener('canplaythrough', () => {
             console.log('BGM loaded:', this.bgmTracks[this.currentTrackIndex]);
@@ -317,19 +319,50 @@ class BGMManager {
     setVolume(volume) {
         this.volume = volume / 100;
         console.log('BGM setVolume called:', volume, 'normalized:', this.volume, 'muted:', this.isMuted);
+        
         if (this.currentAudio) {
             const actualVolume = this.isMuted ? 0 : this.volume;
             this.currentAudio.volume = actualVolume;
-            console.log('BGM volume set to:', actualVolume);
+            console.log('BGM volume set to:', actualVolume, 'audio.volume:', this.currentAudio.volume);
+            
+            // デバッグ用alert
+            if (window.location.search.includes('debug')) {
+                alert('BGM volume: ' + volume + '% -> ' + actualVolume + ' (muted: ' + this.isMuted + ')');
+            }
+        } else {
+            console.warn('No currentAudio available for volume change');
+            
+            // デバッグ用alert
+            if (window.location.search.includes('debug')) {
+                alert('No BGM audio loaded for volume change');
+            }
         }
+        
         this.saveSettings();
     }
     
     toggleMute() {
         this.isMuted = !this.isMuted;
+        console.log('BGM toggleMute called, now muted:', this.isMuted);
+        
         if (this.currentAudio) {
-            this.currentAudio.volume = this.isMuted ? 0 : this.volume;
+            const newVolume = this.isMuted ? 0 : this.volume;
+            this.currentAudio.volume = newVolume;
+            console.log('BGM mute - volume set to:', newVolume, 'audio.volume:', this.currentAudio.volume);
+            
+            // デバッグ用alert
+            if (window.location.search.includes('debug')) {
+                alert('BGM mute toggled - muted: ' + this.isMuted + ', volume: ' + newVolume);
+            }
+        } else {
+            console.warn('No currentAudio available for mute toggle');
+            
+            // デバッグ用alert
+            if (window.location.search.includes('debug')) {
+                alert('No BGM audio loaded for mute toggle');
+            }
         }
+        
         this.updateMuteButton();
         this.saveSettings();
     }
@@ -533,9 +566,18 @@ class BGMManager {
         if (bgmMuteBtn) {
             bgmMuteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                console.log('BGM mute button clicked');
+                
+                // デバッグ用alert
+                if (window.location.search.includes('debug')) {
+                    alert('BGM mute button clicked - current muted: ' + this.isMuted);
+                }
+                
                 this.toggleMute();
                 this.updateBgmMuteButton();
             });
+        } else {
+            console.warn('BGM mute button not found');
         }
         
         if (seMuteBtn && this.soundManager) {
