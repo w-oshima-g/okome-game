@@ -212,6 +212,9 @@ class BGMManager {
         ];
         this.currentTrackIndex = 0;
         this.currentAudio = null;
+        this.audioContext = null;
+        this.sourceNode = null;
+        this.gainNode = null;
         this.volume = 0.25;
         this.isMuted = false;
         this.isPlaying = false;
@@ -220,7 +223,56 @@ class BGMManager {
         // 保存された設定を読み込み
         this.loadSettings();
         
+        // Web Audio API初期化
+        this.initAudioContext();
         this.loadTrack();
+    }
+    
+    initAudioContext() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            console.log('BGM AudioContext initialized');
+        } catch (error) {
+            console.warn('BGM Web Audio API not supported:', error);
+            this.audioContext = null;
+        }
+    }
+    
+    connectToAudioContext() {
+        if (!this.audioContext || !this.currentAudio) return;
+        
+        try {
+            // 既存のソースとゲインノードを切断
+            if (this.sourceNode) {
+                this.sourceNode.disconnect();
+            }
+            if (this.gainNode) {
+                this.gainNode.disconnect();
+            }
+            
+            // 新しいソースとゲインノードを作成
+            this.sourceNode = this.audioContext.createMediaElementSource(this.currentAudio);
+            this.gainNode = this.audioContext.createGain();
+            
+            // ノードを接続: source -> gain -> destination
+            this.sourceNode.connect(this.gainNode);
+            this.gainNode.connect(this.audioContext.destination);
+            
+            // 音量を設定
+            this.updateGainNodeVolume();
+            
+            console.log('BGM connected to Web Audio API');
+        } catch (error) {
+            console.warn('Failed to connect BGM to Web Audio API:', error);
+        }
+    }
+    
+    updateGainNodeVolume() {
+        if (this.gainNode) {
+            const actualVolume = this.isMuted ? 0 : this.volume;
+            this.gainNode.gain.setValueAtTime(actualVolume, this.audioContext.currentTime);
+            console.log('BGM GainNode volume updated:', actualVolume);
+        }
     }
     
     loadTrack() {
@@ -236,24 +288,18 @@ class BGMManager {
         
         this.currentAudio = new Audio(trackPath);
         this.currentAudio.loop = true;
-        const initialVolume = this.isMuted ? 0 : this.volume;
-        this.currentAudio.volume = initialVolume;
-        console.log('Audio created with volume:', initialVolume, 'muted:', this.isMuted, 'base volume:', this.volume);
+        // HTML5 Audioの音量は最大にして、GainNodeで制御
+        this.currentAudio.volume = 1.0;
+        console.log('Audio created for Web Audio API connection');
         
         this.currentAudio.addEventListener('canplaythrough', () => {
             console.log('BGM loaded:', this.bgmTracks[this.currentTrackIndex]);
-            // デバッグ用alert
-            if (window.location.search.includes('debug')) {
-                alert('BGM loaded: ' + this.bgmTracks[this.currentTrackIndex]);
-            }
+            // Web Audio APIに接続
+            this.connectToAudioContext();
         });
         
         this.currentAudio.addEventListener('error', (e) => {
             console.error('BGM load error:', e);
-            // デバッグ用alert
-            if (window.location.search.includes('debug')) {
-                alert('BGM load error: ' + trackPath);
-            }
         });
         
         this.currentAudio.addEventListener('loadstart', () => {
@@ -263,11 +309,12 @@ class BGMManager {
     
     play() {
         if (this.currentAudio) {
-            console.log('Play method called, isPlaying:', this.isPlaying, 'volume:', this.currentAudio.volume);
+            console.log('Play method called, isPlaying:', this.isPlaying);
             
-            // デバッグ用alert
-            if (window.location.search.includes('debug')) {
-                alert('BGM play called - volume: ' + this.currentAudio.volume + ', muted: ' + this.isMuted);
+            // AudioContextを再開（iOS対応）
+            if (this.audioContext && this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
+                console.log('AudioContext resumed');
             }
             
             const playPromise = this.currentAudio.play();
@@ -320,70 +367,8 @@ class BGMManager {
         this.volume = volume / 100;
         console.log('BGM setVolume called:', volume, 'normalized:', this.volume, 'muted:', this.isMuted);
         
-        if (this.currentAudio) {
-            const actualVolume = this.isMuted ? 0 : this.volume;
-            
-            // iOS Safari対応: volumeプロパティが効かない場合はmutedプロパティを使用
-            if (this.isMuted) {
-                this.currentAudio.muted = true;
-            } else {
-                this.currentAudio.muted = false;
-                this.currentAudio.volume = actualVolume;
-            }
-            
-            // 強制的に音量を再設定（ブラウザの制約対応）
-            setTimeout(() => {
-                if (this.currentAudio) {
-                    if (this.isMuted) {
-                        this.currentAudio.muted = true;
-                    } else {
-                        this.currentAudio.muted = false;
-                        this.currentAudio.volume = actualVolume;
-                    }
-                    console.log('Volume re-applied:', this.currentAudio.volume, 'muted:', this.currentAudio.muted);
-                    
-                    // 音量設定が反映されたかチェック
-                    if (!this.isMuted && Math.abs(this.currentAudio.volume - actualVolume) > 0.01) {
-                        console.warn('Volume setting may be restricted by browser/device');
-                        console.warn('Expected:', actualVolume, 'Actual:', this.currentAudio.volume);
-                        
-                        if (window.location.search.includes('debug')) {
-                            alert('⚠️ Volume restriction detected!\nExpected: ' + actualVolume + '\nActual: ' + this.currentAudio.volume + '\nTrying muted property instead...');
-                        }
-                    }
-                }
-            }, 100);
-            
-            console.log('BGM volume set to:', actualVolume, 'audio.volume:', this.currentAudio.volume);
-            
-            // 音声ファイルの詳細状態を確認
-            console.log('Audio state:', {
-                paused: this.currentAudio.paused,
-                readyState: this.currentAudio.readyState,
-                networkState: this.currentAudio.networkState,
-                currentTime: this.currentAudio.currentTime,
-                duration: this.currentAudio.duration,
-                volume: this.currentAudio.volume
-            });
-            
-            // デバッグ用alert
-            if (window.location.search.includes('debug')) {
-                alert('BGM volume: ' + volume + '% -> ' + actualVolume + 
-                      ' (muted: ' + this.isMuted + 
-                      ', paused: ' + this.currentAudio.paused +
-                      ', readyState: ' + this.currentAudio.readyState + 
-                      ', currentTime: ' + Math.round(this.currentAudio.currentTime) + 's' +
-                      ', src: ' + this.currentAudio.src.split('/').pop() +
-                      ', muted_prop: ' + this.currentAudio.muted);
-            }
-        } else {
-            console.warn('No currentAudio available for volume change');
-            
-            // デバッグ用alert
-            if (window.location.search.includes('debug')) {
-                alert('No BGM audio loaded for volume change');
-            }
-        }
+        // Web Audio API GainNodeで音量制御（iOS対応）
+        this.updateGainNodeVolume();
         
         this.saveSettings();
     }
@@ -392,48 +377,8 @@ class BGMManager {
         this.isMuted = !this.isMuted;
         console.log('BGM toggleMute called, now muted:', this.isMuted);
         
-        if (this.currentAudio) {
-            const newVolume = this.isMuted ? 0 : this.volume;
-            
-            // iOS Safari対応: mutedプロパティを優先使用
-            if (this.isMuted) {
-                this.currentAudio.muted = true;
-            } else {
-                this.currentAudio.muted = false;
-                this.currentAudio.volume = newVolume;
-            }
-            
-            // 強制的に音量を再設定（ブラウザの制約対応）
-            setTimeout(() => {
-                if (this.currentAudio) {
-                    if (this.isMuted) {
-                        this.currentAudio.muted = true;
-                    } else {
-                        this.currentAudio.muted = false;
-                        this.currentAudio.volume = newVolume;
-                    }
-                    console.log('Mute volume re-applied:', this.currentAudio.volume, 'muted:', this.currentAudio.muted);
-                }
-            }, 100);
-            
-            console.log('BGM mute - volume set to:', newVolume, 'audio.volume:', this.currentAudio.volume, 'muted:', this.currentAudio.muted);
-            
-            // デバッグ用alert
-            if (window.location.search.includes('debug')) {
-                alert('BGM mute toggled - muted: ' + this.isMuted + 
-                      ', volume: ' + newVolume + 
-                      ', audio.volume: ' + this.currentAudio.volume +
-                      ', audio.muted: ' + this.currentAudio.muted +
-                      ', playing: ' + !this.currentAudio.paused);
-            }
-        } else {
-            console.warn('No currentAudio available for mute toggle');
-            
-            // デバッグ用alert
-            if (window.location.search.includes('debug')) {
-                alert('No BGM audio loaded for mute toggle');
-            }
-        }
+        // Web Audio API GainNodeで音量制御（iOS対応）
+        this.updateGainNodeVolume();
         
         this.updateMuteButton();
         this.saveSettings();
@@ -763,6 +708,13 @@ class BGMManager {
             
             if (isTargetElement) {
                 console.log('User interaction detected for audio context');
+                
+                // BGM AudioContext を再開
+                if (this.audioContext && this.audioContext.state === 'suspended') {
+                    this.audioContext.resume().then(() => {
+                        console.log('BGM AudioContext resumed from user interaction');
+                    });
+                }
                 
                 // Sound Effects AudioContext を初期化
                 if (this.soundManager && this.soundManager.audioContext && this.soundManager.audioContext.state === 'suspended') {
